@@ -1,10 +1,18 @@
 import { SignUp } from "@clerk/nextjs";
+import { Box } from "@mui/material";
 
 const SignUpPage = () => {
   return (
-    <div>
-      <SignUp />
-    </div>
+    <Box
+      sx={{
+        height: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <SignUp signInFallbackRedirectUrl="/subscribe" />
+    </Box>
   );
 };
 

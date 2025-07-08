@@ -5,15 +5,7 @@ import theme from "./theme";
 import "./globals.css";
 import NavBar from "@/components/navbar";
 import { Geist, Geist_Mono } from "next/font/google";
-import {
-  ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from "@clerk/nextjs";
-import { Button } from "@mui/material";
+import { ClerkProvider } from "@clerk/nextjs";
 
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
@@ -46,19 +38,6 @@ export default function RootLayout({
         <body className="antialiased">
           <AppRouterCacheProvider options={{ enableCssLayer: true }}>
             <ThemeProvider theme={theme}>
-              <header className="flex justify-end items-center p-4 gap-4 h-16">
-                <SignedOut>
-                  <SignInButton>
-                    <Button variant="outlined">Sign In</Button>
-                  </SignInButton>
-                  <SignUpButton>
-                    <Button variant="contained">Sign Up</Button>
-                  </SignUpButton>
-                </SignedOut>
-                <SignedIn>
-                  <UserButton />
-                </SignedIn>
-              </header>
               <NavBar />
               {children}
             </ThemeProvider>
