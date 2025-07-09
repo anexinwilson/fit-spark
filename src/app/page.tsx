@@ -66,17 +66,16 @@ export default function Home() {
             Stop guessing. Start training with a plan that adapts to your goals,
             schedule, and progress with FitSpark.
           </Typography>
-          <Link href="/sign-up" passHref legacyBehavior>
-            <Button
-              variant="contained"
-              size="large"
-              endIcon={<ArrowForwardIcon />}
-              sx={{ py: "16px", px: "32px" }}
-              component="a"
-            >
-              Create My Plan
-            </Button>
-          </Link>
+          <Button
+            variant="contained"
+            size="large"
+            endIcon={<ArrowForwardIcon />}
+            sx={{ py: "16px", px: "32px" }}
+            component={Link}
+            href="/sign-up"
+          >
+            Create My Plan
+          </Button>
         </Container>
       </Box>
 
@@ -88,11 +87,9 @@ export default function Home() {
           <Grid
             container
             spacing={4}
-            justifyContent="center"
-            sx={{ mt: "32px" }}
-            component="div"
+            sx={{ justifyContent: "center", mt: "32px" }}
           >
-            <Grid item xs={12} md={6} component="div">
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card sx={{ height: "100%", p: "24px", textAlign: "center" }}>
                 <CardContent>
                   <EventNoteIcon
@@ -109,7 +106,7 @@ export default function Home() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} md={6} component="div">
+            <Grid size={{ xs: 12, md: 6 }}>
               <Card sx={{ height: "100%", p: "24px", textAlign: "center" }}>
                 <CardContent>
                   <FitnessCenterIcon
@@ -135,9 +132,9 @@ export default function Home() {
           <Typography variant="h3" align="center" gutterBottom>
             How It Works
           </Typography>
-          <Grid container spacing={4} sx={{ mt: "32px" }} component="div">
+          <Grid container spacing={4} sx={{ mt: "32px" }}>
             {steps.map(({ step, title, description }) => (
-              <Grid item xs={12} md={4} key={step} component="div">
+              <Grid size={{ xs: 12, md: 4 }} key={step}>
                 <Box
                   sx={{
                     textAlign: "center",

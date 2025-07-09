@@ -28,12 +28,10 @@ const NavBar = () => {
   return (
     <AppBar position="static" color="default" elevation={1}>
       <Toolbar sx={{ justifyContent: "space-between" }}>
-        {/* Left side - Logo */}
-        <Link href="/" style={{ textDecoration: "none" }}>
+        <Link href="/">
           <Image src="/window.svg" width={60} height={60} alt="Logo" />
         </Link>
 
-        {/* Right side - Workout Plan, Profile and Sign Out */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <SignedIn>
             <Link href="/workoutplan">
@@ -64,21 +62,38 @@ const NavBar = () => {
               </Link>
             )}
           </SignedIn>
+
           <SignedOut>
-            <Link href="/">
-              <Button color="inherit" sx={{ textTransform: 'none' }} size="large">Home</Button>
-            </Link>
-            <Link
-              href={isSignedIn ? "/subscribe" : "/sign-up"}
-              
+            <Button
+              color="inherit"
+              sx={{ textTransform: "none" }}
+              size="large"
+              component={Link}
+              href="/"
             >
-              <Button color="inherit" sx={{ textTransform: 'none' }} size="large">Subscribe</Button>
-            </Link>
-            <Link href="/sign-up">
-              <Button variant="outlined" sx={{ textTransform: 'none' }} color="primary" size="medium">
-                Sign Up
-              </Button>
-            </Link>
+              Home
+            </Button>
+
+            <Button
+              color="inherit"
+              sx={{ textTransform: "none" }}
+              size="large"
+              component={Link}
+              href={isSignedIn ? "/subscribe" : "/sign-up"}
+            >
+              Subscribe
+            </Button>
+
+            <Button
+              variant="outlined"
+              sx={{ textTransform: "none" }}
+              color="primary"
+              size="medium"
+              component={Link}
+              href="/sign-up"
+            >
+              Sign Up
+            </Button>
           </SignedOut>
         </Box>
       </Toolbar>
