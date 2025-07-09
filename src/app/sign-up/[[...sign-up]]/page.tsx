@@ -11,7 +11,7 @@ const SignUpPage = () => {
         alignItems: "center",
       }}
     >
-      <SignUp signInFallbackRedirectUrl="/subscribe" />
+      <SignUp signInFallbackRedirectUrl="/create-profile" />
     </Box>
   );
 };

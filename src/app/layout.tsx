@@ -1,3 +1,6 @@
+// https://mui.com/material-ui/integrations/nextjs/
+// https://clerk.com/docs/quickstarts/nextjs
+
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
 import { Roboto } from "next/font/google";
 import { ThemeProvider } from "@mui/material/styles";
@@ -6,6 +9,7 @@ import "./globals.css";
 import NavBar from "@/components/navbar";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ReactQueryClientProvider } from "@/components/react-query-client-provider";
 
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
@@ -36,12 +40,14 @@ export default function RootLayout({
         className={`${roboto.variable} ${geistSans.variable} ${geistMono.variable}`}
       >
         <body className="antialiased">
-          <AppRouterCacheProvider options={{ enableCssLayer: true }}>
-            <ThemeProvider theme={theme}>
-              <NavBar />
-              {children}
-            </ThemeProvider>
-          </AppRouterCacheProvider>
+          <ReactQueryClientProvider>
+            <AppRouterCacheProvider options={{ enableCssLayer: true }}>
+              <ThemeProvider theme={theme}>
+                <NavBar />
+                {children}
+              </ThemeProvider>
+            </AppRouterCacheProvider>
+          </ReactQueryClientProvider>
         </body>
       </html>
     </ClerkProvider>

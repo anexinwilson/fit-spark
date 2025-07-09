@@ -1,4 +1,5 @@
 "use client";
+
 import { SignedIn, SignedOut, SignOutButton, useUser } from "@clerk/nextjs";
 import {
   AppBar,
