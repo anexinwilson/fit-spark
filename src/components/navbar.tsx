@@ -30,7 +30,7 @@ const NavBar = () => {
     <AppBar position="static" color="default" elevation={1}>
       <Toolbar sx={{ justifyContent: "space-between" }}>
         <Link href="/">
-          <Image src="/window.svg" width={60} height={60} alt="Logo" />
+          <Image src="/app-icon.png" width={60} height={60} alt="Logo" />
         </Link>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
