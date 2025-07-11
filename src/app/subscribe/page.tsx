@@ -22,6 +22,7 @@ import { availablePlans } from "@/lib/plans";
 import { useMutation } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import toast, { Toaster } from "react-hot-toast";
 
 type SubscribeResponse = {
   url: string;
@@ -58,30 +59,45 @@ const subscribeToPlan = async (
 
 const Subscribe = () => {
   const { user } = useUser();
-  const router =  useRouter()
+  const router = useRouter();
 
   const userId = user?.id;
   const email = user?.emailAddresses[0].emailAddress || "";
 
-  const {mutate, isPending} = useMutation<SubscribeResponse, Error, { planType: string }>({
+  const { mutate, isPending } = useMutation<
+    SubscribeResponse,
+    Error,
+    { planType: string }
+  >({
     mutationFn: async ({ planType }) => {
       if (!userId) {
         throw new Error("User not signed in");
       }
       return subscribeToPlan(planType, userId, email);
     },
+
+    onMutate: () => {
+      toast.loading("Processing your subscription");
+    },
+    onSuccess: (data) => {
+      window.location.href = data.url;
+    },
+    onError: () => {
+      toast.error("Something went wrong");
+    },
   });
 
-  const handleSubscribe = (planType:string) => {
+  const handleSubscribe = (planType: string) => {
     if (!userId) {
-      router.push("/sign-up")
-      return
+      router.push("/sign-up");
+      return;
     }
-    mutate({planType})
-  }
+    mutate({ planType });
+  };
 
   return (
     <Box sx={{ py: 10, bgcolor: "grey.50", minHeight: "100vh" }}>
+      <Toaster  position="top-right"  />
       <Container maxWidth="lg">
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <Typography variant="h3" fontWeight="bold" gutterBottom>
