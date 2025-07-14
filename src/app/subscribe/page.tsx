@@ -97,7 +97,7 @@ const Subscribe = () => {
 
   return (
     <Box sx={{ py: 10, bgcolor: "grey.50", minHeight: "100vh" }}>
-      <Toaster  position="top-right"  />
+      <Toaster position="top-right" />
       <Container maxWidth="lg">
         <Box sx={{ textAlign: "center", mb: 8 }}>
           <Typography variant="h3" fontWeight="bold" gutterBottom>

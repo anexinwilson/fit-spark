@@ -21,6 +21,7 @@
     "@prisma/client": "^6.11.1",
     "@tanstack/react-query": "^5.81.5",
     "next": "15.3.5",
+    "openai": "^5.9.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",

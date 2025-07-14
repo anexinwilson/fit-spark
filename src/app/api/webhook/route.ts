@@ -78,9 +78,7 @@ const handleCheckoutSessionCompleted = async (
 };
 
 const handleInvoicePaymentFailed = async (invoice: Stripe.Invoice) => {
-  const subId = typeof invoice.subscription === 'string' 
-  ? invoice.subscription 
-  : invoice.subscription?.id;
+  const subId = (invoice as any).subscription as string;
 
   if (!subId) {
     return;
