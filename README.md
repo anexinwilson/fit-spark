@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fit Spark 
+
+Fit Spark is a Next.js app that generates personalized workout plans based on fitness goals, available equipment, and experience level, offering weekly or monthly program options. It has social login and email sign-in through Clerk, flexible subscriptions via Stripe weekly, monthly, yearly, and features to change or cancel plans anytime. The app also has profile management for viewing subscription details and uses Stripe webhooks to keep subscription status updated in real time.
+
+## Features
+
+| Area | What's inside |
+| ---- | ------------- |
+| **Authentication** | Clerk (email-link + social) |
+| **Payments** | Stripe Checkout & webhooks (create / upgrade / cancel) |
+| **Workout AI** | GPT-4o prompt -> JSON schedule rendered day-by-day |
+| **Database** | PostgreSQL on Neon, accessed through Prisma |
+| **UI** | Material UI, Emotion |
+| **State / Data-fetch** | React Query |
+| **Tests** | Jest + custom mocks (OpenAI, Stripe, Prisma, Clerk) |
+
+## Tech Stack (Core)
+
+- Next.js 15 – App Router
+- TypeScript
+- React 19
+- Prisma ORM → Neon Postgres
+- Stripe SDK
+- OpenAI SDK
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone & Install
+
+```bash
+git https://github.com/anexinwilson/fit-spark.git
+cd fit-spark
+npm install       
+```
+
+### 2. Environment Variables
+
+Duplicate `.env.local.example` to `.env.local` and fill in the required values for Clerk, Stripe, OpenAI, and the base URL:
+
+```ini
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
+CLERK_SECRET_KEY=...
+STRIPE_SECRET_KEY=...
+STRIPE_WEBHOOK_SECRET=...
+STRIPE_PRICE_WEEKLY=...
+STRIPE_PRICE_MONTHLY=...
+STRIPE_PRICE_YEARLY=...
+OPENAI_API_KEY=...
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
+
+Duplicate `.env.example` to `.env` and add the Prisma database URL:
+
+```ini
+DATABASE_URL=postgres://<user>:<password>@<your-neon>.neon.tech/neondb
+```
+
+### 3. Database Migration (Neon + Prisma)
+
+```bash
+npx prisma generate
+npx prisma migrate deploy
+```
+
+### 4. Stripe CLI for Local Webhooks
+
+To test Stripe webhooks locally, set up the Stripe CLI:
+
+```bash
+stripe login
+stripe listen --forward-to localhost:3000/api/webhook
+```
+
+### 5. Run Dev Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App opens on `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Unit Tests
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run test
+```
 
-## Learn More
+### Build
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm start
+```
