@@ -19,6 +19,9 @@ import {
 } from "@mui/material";
 import { useMutation } from "@tanstack/react-query";
 
+/**
+ * Interface describing the expected input for generating a workout plan.
+ */
 interface WorkoutPlanInput {
   workoutType: string;
   fitnessGoal: string;
@@ -32,11 +35,17 @@ interface WorkoutPlanInput {
   daysPerWeek: number;
 }
 
+/**
+ * Structure for API response containing the generated weekly workout plan.
+ */
 interface WorkoutPlanResponse {
   workoutPlan?: WeeklyWorkoutPlan;
   error: string;
 }
 
+/**
+ * Structure for a daily workout plan.
+ */
 interface DailyWorkoutPlan {
   warmup?: string;
   mainWorkout?: string;
@@ -44,10 +53,16 @@ interface DailyWorkoutPlan {
   cardio?: string;
 }
 
+/**
+ * Weekly workout plan: each day of the week can map to a daily plan.
+ */
 interface WeeklyWorkoutPlan {
   [day: string]: DailyWorkoutPlan;
 }
 
+/**
+ * Sends a POST request to generate an AI-powered workout plan.
+ */
 const generateWorkoutPlan = async (payload: WorkoutPlanInput) => {
   const response = await fetch("/api/generate-workoutplan", {
     method: "POST",
@@ -57,6 +72,9 @@ const generateWorkoutPlan = async (payload: WorkoutPlanInput) => {
   return response.json();
 };
 
+/**
+ * Main dashboard component for users to create and view AI-generated workout plans.
+ */
 const WorkoutPlanDashboard = () => {
   const { mutate, isPending, data, isSuccess } = useMutation<
     WorkoutPlanResponse,
@@ -66,6 +84,7 @@ const WorkoutPlanDashboard = () => {
     mutationFn: generateWorkoutPlan,
   });
 
+  // Handles form submission and collects data for the API.
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formdata = new FormData(e.currentTarget);
@@ -80,16 +99,12 @@ const WorkoutPlanDashboard = () => {
       equipment: formdata.get("equipment")?.toString() || "",
       limitations: formdata.get("limitations")?.toString() || "",
       daysPerWeek: Number(formdata.get("daysPerWeek")) || 3,
-
       days: 7,
     };
     mutate(payload);
   };
 
-  // if (data) {
-  //   console.log(data);
-  // }
-
+  // Returns the list of days with generated workout plans.
   const getActiveDays = () => {
     const allDays = [
       "Monday",
@@ -101,15 +116,16 @@ const WorkoutPlanDashboard = () => {
       "Sunday",
     ];
     if (!data?.workoutPlan) return allDays;
-
     return allDays.filter((day) => data.workoutPlan![day]);
   };
 
+  // Gets the workout plan for a specific day.
   const getWorkoutPlanForDay = (day: string): DailyWorkoutPlan | undefined => {
     if (!data?.workoutPlan) return undefined;
     return data?.workoutPlan[day];
   };
 
+  // Renders the main UI for workout plan generation and display.
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       <Grid container spacing={3}>
@@ -126,6 +142,7 @@ const WorkoutPlanDashboard = () => {
             </Typography>
 
             <form onSubmit={handleSubmit} noValidate>
+              {/* Various user input fields for the workout plan generator */}
               <FormControl fullWidth margin="normal" variant="outlined">
                 <InputLabel>What type of workouts do you prefer?</InputLabel>
                 <Select
@@ -268,6 +285,7 @@ const WorkoutPlanDashboard = () => {
             </Typography>
 
             {data?.workoutPlan && isSuccess ? (
+              // Renders the generated workout plan by day.
               <Box>
                 {getActiveDays().map((day, key) => {
                   const workoutPlan = getWorkoutPlanForDay(day);
@@ -323,5 +341,3 @@ const WorkoutPlanDashboard = () => {
 };
 
 export default WorkoutPlanDashboard;
-
-

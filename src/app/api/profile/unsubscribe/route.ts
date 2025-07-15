@@ -4,13 +4,17 @@ import { stripe } from "@/lib/stripe";
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
+// Cancels the active Stripe subscription for the authenticated user.
+// Updates the local profile to reflect the cancellation.
 export const POST = async (request: NextRequest) => {
   try {
+    // Retrieves the authenticated user's info.
     const clerkUser = await currentUser();
     if (!clerkUser?.id) {
       return NextResponse.json({ error: "Unauthorized" });
     }
 
+    // Looks up the user's profile and subscription ID.
     const profile = await prisma.profile.findUnique({
       where: { userId: clerkUser.id },
     });
@@ -23,8 +27,8 @@ export const POST = async (request: NextRequest) => {
       return NextResponse.json({ error: "No Active Subscription Found" });
     }
 
+    // Requests Stripe to cancel the subscription at the end of the billing period.
     const subscriptionId = profile.stripeSubscriptionId;
-
     const canceledSubscriptions = await stripe.subscriptions.update(
       subscriptionId,
       {
@@ -32,6 +36,7 @@ export const POST = async (request: NextRequest) => {
       }
     );
 
+    // Updates the user's profile to remove subscription info.
     const updatedProfile = await prisma.profile.update({
       where: { userId: clerkUser.id },
       data: {
@@ -41,9 +46,10 @@ export const POST = async (request: NextRequest) => {
       },
     });
 
-
+    // Returns updated subscription details.
     return NextResponse.json({ subscription: updatedProfile });
   } catch (error: any) {
+    // Handles errors from Stripe or the database.
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 };

@@ -15,9 +15,7 @@ import {
   ListItemIcon,
   ListItemText,
 } from "@mui/material";
-
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-
 import { availablePlans } from "@/lib/plans";
 import { useMutation } from "@tanstack/react-query";
 import { useUser } from "@clerk/nextjs";
@@ -31,6 +29,10 @@ type SubscribeError = {
   error: string;
 };
 
+/**
+ * Sends a POST request to initiate a subscription checkout session for a plan.
+ * Expects planType, userId, and email.
+ */
 const subscribeToPlan = async (
   planType: string,
   userId: string,
@@ -57,13 +59,19 @@ const subscribeToPlan = async (
   return data;
 };
 
+/**
+ * Subscription page for selecting and subscribing to a pricing plan.
+ * Only available to signed-in users.
+ */
 const Subscribe = () => {
   const { user } = useUser();
   const router = useRouter();
 
+  // Clerk user ID and email for Stripe Checkout metadata.
   const userId = user?.id;
   const email = user?.emailAddresses[0].emailAddress || "";
 
+  // Handles subscription checkout via React Query mutation.
   const { mutate, isPending } = useMutation<
     SubscribeResponse,
     Error,
@@ -75,11 +83,12 @@ const Subscribe = () => {
       }
       return subscribeToPlan(planType, userId, email);
     },
-
     onMutate: () => {
+      // Shows a loading toast while the mutation is running.
       toast.loading("Processing your subscription");
     },
     onSuccess: (data) => {
+      // Redirects user to Stripe Checkout on success.
       window.location.href = data.url;
     },
     onError: () => {
@@ -87,6 +96,7 @@ const Subscribe = () => {
     },
   });
 
+  // Starts the subscription flow when a plan is selected.
   const handleSubscribe = (planType: string) => {
     if (!userId) {
       router.push("/sign-up");
@@ -95,6 +105,7 @@ const Subscribe = () => {
     mutate({ planType });
   };
 
+  // Renders the available pricing plans.
   return (
     <Box sx={{ py: 10, bgcolor: "grey.50", minHeight: "100vh" }}>
       <Toaster position="top-right" />

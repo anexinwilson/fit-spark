@@ -23,11 +23,17 @@ import toast, { Toaster } from "react-hot-toast";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+/**
+ * Fetches the current user's subscription status from the backend.
+ */
 const fetchSubscriptionStatus = async () => {
   const response = await fetch("/api/profile/subscription-status");
   return response.json();
 };
 
+/**
+ * Sends a request to update the user's subscription plan.
+ */
 const updatePlan = async (newPlan: string) => {
   const response = await fetch("/api/profile/change-plan", {
     method: "POST",
@@ -37,6 +43,9 @@ const updatePlan = async (newPlan: string) => {
   return response.json();
 };
 
+/**
+ * Sends a request to unsubscribe the user.
+ */
 const unsubscibe = async () => {
   const response = await fetch("/api/profile/unsubscribe", {
     method: "POST",
@@ -45,6 +54,11 @@ const unsubscibe = async () => {
   return response.json();
 };
 
+/**
+ * Renders the user's profile page, including subscription details,
+ * plan management, and the ability to unsubscribe.
+ * Only accessible for signed-in users.
+ */
 const Profile = () => {
   const [selectedPlan, setSelectedPlan] = useState<string>("");
   const { isLoaded, isSignedIn, user } = useUser();
@@ -63,6 +77,7 @@ const Profile = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Handles subscription plan updates
   const {
     data: updatedPlan,
     mutate: updatePlanMutation,
@@ -72,13 +87,14 @@ const Profile = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["subscription"] });
       toast.success("Subscription plan updated successfully!");
-      refetch()
+      refetch();
     },
     onError: () => {
       toast.error("Error updating plan");
     },
   });
 
+  // Handles unsubscribing from the service
   const {
     data: canceledPlan,
     mutate: unsubscibeMutation,
@@ -94,10 +110,12 @@ const Profile = () => {
     },
   });
 
+  // Finds the user's current plan from the available plans list.
   const currentPlan = availablePlans.find(
     (plan) => plan.interval === subscription?.subscription.subscriptionTier
   );
 
+  // Handles plan change requests.
   const handleUpdatePlan = () => {
     if (selectedPlan) {
       updatePlanMutation(selectedPlan);
@@ -105,6 +123,7 @@ const Profile = () => {
     setSelectedPlan("");
   };
 
+  // Handles the user clicking "unsubscribe."
   const handleUnsubscribe = () => {
     if (
       confirm(
@@ -115,6 +134,7 @@ const Profile = () => {
     }
   };
 
+  // Renders loading state while checking auth.
   if (!isLoaded) {
     return (
       <Box
@@ -129,6 +149,7 @@ const Profile = () => {
     );
   }
 
+  // Redirects users to sign-in if not authenticated.
   if (!isSignedIn) {
     return (
       <Container maxWidth="sm" sx={{ py: 6 }}>
@@ -137,6 +158,7 @@ const Profile = () => {
     );
   }
 
+  // Renders the profile UI with subscription management.
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
       <Toaster position="top-center" />
@@ -172,6 +194,7 @@ const Profile = () => {
         </Typography>
 
         {isLoading ? (
+          // Shows spinner while fetching subscription.
           <Box display="flex" alignItems="center" gap={2}>
             <CircularProgress size={24} />
             <Typography>Loading subscription details...</Typography>

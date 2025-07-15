@@ -11,6 +11,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ReactQueryClientProvider } from "@/components/react-query-client-provider";
 
+/**
+ * Loads the Roboto font for the UI, with multiple weights.
+ */
 const roboto = Roboto({
   weight: ["300", "400", "500", "700"],
   subsets: ["latin"],
@@ -18,6 +21,9 @@ const roboto = Roboto({
   variable: "--font-roboto",
 });
 
+/**
+ * Loads Geist fonts for branding/typography.
+ */
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -28,6 +34,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/**
+ * Root layout for the app. Sets up all global providers:
+ * - Clerk (authentication)
+ * - React Query
+ * - MUI theming and styling
+ * - NavBar and CSS baseline
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

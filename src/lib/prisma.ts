@@ -2,8 +2,10 @@
 
 import { PrismaClient } from "@/generated/prisma";
 
-
-
+/**
+ * Ensures only one PrismaClient instance is used during development (to avoid hot reload issues).
+ * In production, always creates a new instance.
+ */
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 export const prisma =

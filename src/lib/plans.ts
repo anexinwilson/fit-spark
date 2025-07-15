@@ -1,3 +1,6 @@
+/**
+ * TypeScript interface describing a subscription plan.
+ */
 export interface Plan {
   name: string;
   amount: number;
@@ -8,6 +11,10 @@ export interface Plan {
   features: string[];
 }
 
+/**
+ * List of all subscription plans offered in the app.
+ * Each plan includes display and business logic information.
+ */
 export const availablePlans: Plan[] = [
   {
     name: "Weekly Plan",
@@ -50,10 +57,16 @@ export const availablePlans: Plan[] = [
   },
 ];
 
+/**
+ * Maps plan interval types to Stripe price IDs, loaded from env variables.
+ */
 const priceIDMap: Record<string, string> = {
   week: process.env.STRIPE_PRICE_WEEKLY!,
   month: process.env.STRIPE_PRICE_MONTHLY!,
   year: process.env.STRIPE_PRICE_YEARLY!,
 };
 
+/**
+ * Utility function: returns the Stripe price ID for a given plan type.
+ */
 export const getPriceIDFromType = (planType: string) => priceIDMap[planType];
