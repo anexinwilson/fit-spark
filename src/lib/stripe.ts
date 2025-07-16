@@ -1,7 +1,9 @@
 import Stripe from "stripe";
 
 /**
- * Single instance of the Stripe client for use throughout the app.
- * The secret key is loaded from environment variables.
+ * Returns a new Stripe client using the current environment variable.
+ * Ensures secret is loaded at function call, not at import.
  */
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+export function getStripeClient() {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+}

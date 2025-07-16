@@ -1,6 +1,5 @@
-import { getPriceIDFromType } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/stripe";
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -8,6 +7,8 @@ import { NextRequest, NextResponse } from "next/server";
 // Updates the local profile to reflect the cancellation.
 export const POST = async (request: NextRequest) => {
   try {
+    // Create the Stripe client for this request.
+    const stripe = getStripeClient();
     // Retrieves the authenticated user's info.
     const clerkUser = await currentUser();
     if (!clerkUser?.id) {

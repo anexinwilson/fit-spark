@@ -1,5 +1,5 @@
 import { getPriceIDFromType } from "@/lib/plans";
-import { stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/stripe";
 import { NextRequest, NextResponse } from "next/server";
 
 // Initiates a Stripe Checkout session for subscription.
@@ -30,6 +30,7 @@ export const POST = async (request: NextRequest) => {
     }
 
     // Creates a Stripe Checkout session for a subscription.
+    const stripe = getStripeClient();
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [

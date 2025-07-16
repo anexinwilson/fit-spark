@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe";
+import { getStripeClient } from "@/lib/stripe";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
@@ -15,6 +15,8 @@ export const POST = async (request: NextRequest) => {
   let event: Stripe.Event;
 
   try {
+    // Create the Stripe client for this request.
+    const stripe = getStripeClient();
     // Verifies the request using Stripe's signing secret.
     event = stripe.webhooks.constructEvent(
       body,
@@ -49,7 +51,10 @@ export const POST = async (request: NextRequest) => {
       case "customer.subscription.deleted": {
         // Called when a subscription is canceled or deleted.
         const subscription = event.data.object as Stripe.Subscription;
-        console.log("Processing customer.subscription.deleted:", subscription.id);
+        console.log(
+          "Processing customer.subscription.deleted:",
+          subscription.id
+        );
         await handleCustomerSubscriptionDeleted(subscription);
         break;
       }
@@ -62,7 +67,7 @@ export const POST = async (request: NextRequest) => {
     console.error("Error processing webhook:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  
+
   // Acknowledges receipt of the webhook event to Stripe.
   return NextResponse.json({ received: true });
 };
@@ -192,6 +197,9 @@ const handleCustomerSubscriptionDeleted = async (
     });
     console.log("Profile updated for deleted subscription:", userId);
   } catch (error: any) {
-    console.error("Error updating profile for deleted subscription:", error.message);
+    console.error(
+      "Error updating profile for deleted subscription:",
+      error.message
+    );
   }
 };

@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openAI = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 /**
  * Structure for a daily workout plan.
  */
@@ -33,6 +29,9 @@ export const POST = async (request: NextRequest) => {
       daysPerWeek,
     } = await request.json();
 
+    // Create an OpenAI client using the API key
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
     // Builds a prompt for OpenAI with all relevant user parameters.
     const prompt = `You are a certified fitness trainer.
     Generate a personalized ${daysPerWeek}-day workout plan for a user with the following preferences:
@@ -59,7 +58,7 @@ export const POST = async (request: NextRequest) => {
     **Output only JSON. No markdown, no explanations.**`;
 
     // Requests a workout plan from OpenAI based on user preferences.
-    const response = await openAI.chat.completions.create({
+    const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {

@@ -1,6 +1,6 @@
 import { getPriceIDFromType } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe";
+import { getStripeClient  } from "@/lib/stripe";
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -8,6 +8,10 @@ import { NextRequest, NextResponse } from "next/server";
 // Updates both Stripe and the user's profile in the local database.
 export const POST = async (request: NextRequest) => {
   try {
+
+    // Create the Stripe client for this request.
+    const stripe = getStripeClient();
+    
     // Retrieves the currently authenticated user.
     const clerkUser = await currentUser();
     if (!clerkUser?.id) {
