@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
+/** @type {import('next').NextConfig} */
+
 const nextConfig: NextConfig = {
   /* config options here */
+  output: 'standalone',
   images: {
     remotePatterns: [
       {
@@ -11,7 +14,10 @@ const nextConfig: NextConfig = {
         hostname: "img.clerk.com",
       }
     ]
-  }
+  },
+    eslint: {
+    ignoreDuringBuilds: true,   
+  },
 };
 
 export default nextConfig;

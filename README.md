@@ -1,6 +1,6 @@
 # Fit Spark 
 
-Fit Spark is a Next.js app that generates personalized workout plans based on fitness goals, available equipment, and experience level, offering weekly or monthly program options. It has social login and email sign-in through Clerk, flexible subscriptions via Stripe weekly, monthly, yearly, and features to change or cancel plans anytime. The app also has profile management for viewing subscription details and uses Stripe webhooks to keep subscription status updated in real time.
+Fit Spark is a Next.js app built with TypeScript that generates personalized workout plans based on fitness goals, available equipment, and experience level, offering weekly or monthly program options. It has social login and email sign-in through Clerk, flexible subscriptions via Stripe weekly, monthly, yearly, and features to change or cancel plans anytime. The app also has profile management for viewing subscription details and uses Stripe webhooks to keep subscription status updated in real time.
 
 ## Features
 
