@@ -43,19 +43,18 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isWorkoutPlanRoute(req) && userId) {
-    // Before accessing workoutplan, checks if the user has an active subscription.
     try {
       const response = await fetch(
         `${origin}/api/check-subscription?userId=${userId}`
       );
-      const data = await response.json();
-
-      if (!data.subscriptionActive) {
-        // If no active subscription, redirect to subscribe page.
+      if (!response.ok) {
         return NextResponse.redirect(new URL("/subscribe", origin));
       }
-    } catch (error: any) {
-      // On API error, still redirect to subscribe.
+      const data = await response.json();
+      if (!data.subscriptionActive) {
+        return NextResponse.redirect(new URL("/subscribe", origin));
+      }
+    } catch {
       return NextResponse.redirect(new URL("/subscribe", origin));
     }
   }

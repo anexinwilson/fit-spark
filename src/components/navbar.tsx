@@ -76,14 +76,20 @@ const NavBar = () => {
         </Link>
 
         {/* Desktop navigation and actions */}
-        <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 2 }}>
+        <Box
+          sx={{
+            display: { xs: "none", md: "flex" },
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
           <SignedIn>
             {/* If signed in, show workout plan link, sign out button, and avatar linking to profile */}
             <Link href="/workoutplan">
               <Typography
                 variant="h6"
                 component="span"
-                sx={{ color: "white", fontWeight: "medium"}}
+                sx={{ color: "white", fontWeight: "medium" }}
               >
                 Workout Plan
               </Typography>
@@ -139,7 +145,13 @@ const NavBar = () => {
         </Box>
 
         {/* Mobile view */}
-        <Box sx={{ display: { xs: "flex", md: "none" }, alignItems: "center", gap: 1 }}>
+        <Box
+          sx={{
+            display: { xs: "flex", md: "none" },
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
           <IconButton sx={{ color: "white" }} onClick={handleMenuOpen}>
             <MenuIcon />
           </IconButton>
@@ -160,7 +172,11 @@ const NavBar = () => {
         </Box>
 
         {/* Dropdown menu for mobile */}
-        <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+        >
           <SignedIn>
             <MenuItem component={Link} href="/workoutplan">
               Workout Plan

@@ -64,6 +64,7 @@ const Profile = () => {
   const { isLoaded, isSignedIn, user } = useUser();
   const queryClient = useQueryClient();
   const router = useRouter();
+
   const {
     data: subscription,
     isLoading,
@@ -78,37 +79,31 @@ const Profile = () => {
   });
 
   // Handles subscription plan updates
-  const {
-    data: updatedPlan,
-    mutate: updatePlanMutation,
-    isPending: isUpdatePlanPending,
-  } = useMutation({
-    mutationFn: updatePlan,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
-      toast.success("Subscription plan updated successfully!");
-      refetch();
-    },
-    onError: () => {
-      toast.error("Error updating plan");
-    },
-  });
+  const { mutate: updatePlanMutation, isPending: isUpdatePlanPending } =
+    useMutation({
+      mutationFn: updatePlan,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        toast.success("Subscription plan updated successfully!");
+        refetch();
+      },
+      onError: () => {
+        toast.error("Error updating plan");
+      },
+    });
 
   // Handles unsubscribing from the service
-  const {
-    data: canceledPlan,
-    mutate: unsubscibeMutation,
-    isPending: isUnsubscribedPending,
-  } = useMutation({
-    mutationFn: unsubscibe,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscription"] });
-      router.push("/subscribe");
-    },
-    onError: () => {
-      toast.error("Error unsubscribing");
-    },
-  });
+  const { mutate: unsubscibeMutation, isPending: isUnsubscribedPending } =
+    useMutation({
+      mutationFn: unsubscibe,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["subscription"] });
+        router.push("/subscribe");
+      },
+      onError: () => {
+        toast.error("Error unsubscribing");
+      },
+    });
 
   // Finds the user's current plan from the available plans list.
   const currentPlan = availablePlans.find(
@@ -134,7 +129,7 @@ const Profile = () => {
     }
   };
 
-  // Renders loading state while checking auth.
+  // Loading state while fetching user data
   if (!isLoaded) {
     return (
       <Box
@@ -149,7 +144,7 @@ const Profile = () => {
     );
   }
 
-  // Redirects users to sign-in if not authenticated.
+  // Redirect if user is not signed in
   if (!isSignedIn) {
     return (
       <Container maxWidth="sm" sx={{ py: 6 }}>
@@ -158,7 +153,7 @@ const Profile = () => {
     );
   }
 
-  // Renders the profile UI with subscription management.
+  // Render the profile UI
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
       <Toaster position="top-center" />
@@ -194,7 +189,6 @@ const Profile = () => {
         </Typography>
 
         {isLoading ? (
-          // Shows spinner while fetching subscription.
           <Box display="flex" alignItems="center" gap={2}>
             <CircularProgress size={24} />
             <Typography>Loading subscription details...</Typography>
@@ -237,88 +231,86 @@ const Profile = () => {
                 </>
               ) : (
                 <Typography color="text.secondary">
-                  Current plan not found.
+                  No active subscription.
                 </Typography>
               )}
             </Box>
 
-            <Box
-              sx={{
-                flex: 1,
-                minWidth: 250,
-                minHeight: 150,
-                textAlign: "center",
-              }}
-            >
-              <Typography variant="h6" gutterBottom>
-                Change subscription
-              </Typography>
+            {currentPlan && (
+              <Box
+                sx={{
+                  flex: 1,
+                  minWidth: 250,
+                  minHeight: 150,
+                  textAlign: "center",
+                }}
+              >
+                <Typography variant="h6" gutterBottom>
+                  Change subscription
+                </Typography>
 
-              {currentPlan && (
-                <>
-                  <FormControl
-                    fullWidth
-                    disabled={isUpdatePlanPending}
-                    sx={{ mb: 2, width: 240 }}
+                <FormControl
+                  fullWidth
+                  disabled={isUpdatePlanPending}
+                  sx={{ mb: 2, width: 240 }}
+                >
+                  <InputLabel id="plan-select-label">
+                    Select New Plan
+                  </InputLabel>
+                  <Select
+                    labelId="plan-select-label"
+                    value={selectedPlan || currentPlan.interval}
+                    label="Select New Plan"
+                    onChange={(event) => setSelectedPlan(event.target.value)}
                   >
-                    <InputLabel id="plan-select-label">
-                      Select New Plan
-                    </InputLabel>
-                    <Select
-                      labelId="plan-select-label"
-                      value={selectedPlan || currentPlan.interval}
-                      label="Select New Plan"
-                      onChange={(event) => setSelectedPlan(event.target.value)}
-                    >
-                      {availablePlans.map((plan) => (
-                        <MenuItem key={plan.interval} value={plan.interval}>
-                          {plan.name} - ${plan.amount} / {plan.interval}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                    {availablePlans.map((plan) => (
+                      <MenuItem key={plan.interval} value={plan.interval}>
+                        {plan.name} - ${plan.amount} / {plan.interval}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
-                  <Button
-                    variant="contained"
-                    onClick={handleUpdatePlan}
-                    disabled={!selectedPlan || isUpdatePlanPending}
-                    sx={{ width: 240 }}
-                  >
-                    Save Change
-                  </Button>
+                <Button
+                  variant="contained"
+                  onClick={handleUpdatePlan}
+                  disabled={!selectedPlan || isUpdatePlanPending}
+                  sx={{ width: 240 }}
+                >
+                  Save Change
+                </Button>
 
-                  {isUpdatePlanPending && (
-                    <Box display="flex" alignItems="center" mt={2} gap={1}>
-                      <CircularProgress size={20} />
-                      <Typography>Updating Plan...</Typography>
-                    </Box>
-                  )}
-                </>
-              )}
-            </Box>
+                {isUpdatePlanPending && (
+                  <Box display="flex" alignItems="center" mt={2} gap={1}>
+                    <CircularProgress size={20} />
+                    <Typography>Updating Plan...</Typography>
+                  </Box>
+                )}
+              </Box>
+            )}
           </Box>
         ) : (
           <Alert severity="info" sx={{ mt: 2 }}>
             You are not subscribed to any plan.
           </Alert>
         )}
-        <Divider sx={{ my: 4 }} />
 
-        <Box mt={4} textAlign="center">
-          <Typography variant="h6" gutterBottom>
-            Unsubscribe
-          </Typography>
-
-          <Button
-            variant="outlined"
-            color="error"
-            onClick={handleUnsubscribe}
-            disabled={isUnsubscribedPending}
-            sx={{ minWidth: 200 }}
-          >
-            {isUnsubscribedPending ? "Unsubscribing..." : "Unsubscribe"}
-          </Button>
-        </Box>
+        {subscription?.subscription.subscriptionActive && (
+          <Box mt={4} textAlign="center">
+            <Typography variant="h6" gutterBottom>
+              Unsubscribe
+            </Typography>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={handleUnsubscribe}
+              disabled={isUnsubscribedPending}
+              sx={{ minWidth: 200 }}
+            >
+              {isUnsubscribedPending ? "Unsubscribing..." : "Unsubscribe"}
+            </Button>
+          </Box>
+        )}
       </Paper>
     </Container>
   );

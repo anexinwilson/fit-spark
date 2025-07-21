@@ -15,7 +15,7 @@ export const GET = async () => {
     // Selects only the subscription tier field from the profile.
     const profile = await prisma.profile.findUnique({
       where: { userId: clerkUser.id },
-      select: { subscriptionTier: true },
+      select: { subscriptionTier: true, subscriptionActive: true },
     });
 
     if (!profile) {
