@@ -148,6 +148,7 @@ const WorkoutPlanDashboard = () => {
                 <Select
                   name="workoutType"
                   label="What type of workouts do you prefer?"
+                  defaultValue=""
                 >
                   <MenuItem value="bodyweight">
                     Bodyweight (No equipment needed)
@@ -168,7 +169,7 @@ const WorkoutPlanDashboard = () => {
 
               <FormControl fullWidth margin="normal" variant="outlined">
                 <InputLabel>Fitness Goal</InputLabel>
-                <Select name="fitnessGoal" label="Fitness Goal">
+                <Select name="fitnessGoal" label="Fitness Goal" defaultValue="">
                   <MenuItem value="weight-loss">Weight Loss</MenuItem>
                   <MenuItem value="muscle-gain">Muscle Gain</MenuItem>
                   <MenuItem value="strength">Build Strength</MenuItem>
@@ -179,7 +180,11 @@ const WorkoutPlanDashboard = () => {
 
               <FormControl fullWidth margin="normal" variant="outlined">
                 <InputLabel>Fitness Experience</InputLabel>
-                <Select name="experienceLevel" label="Fitness Experience">
+                <Select
+                  name="experienceLevel"
+                  label="Fitness Experience"
+                  defaultValue=""
+                >
                   <MenuItem value="complete-beginner">
                     Complete Beginner (Never worked out)
                   </MenuItem>
@@ -197,7 +202,7 @@ const WorkoutPlanDashboard = () => {
 
               <FormControl fullWidth margin="normal" variant="outlined">
                 <InputLabel>Age Range</InputLabel>
-                <Select name="ageRange" label="Age Range">
+                <Select name="ageRange" label="Age Range" defaultValue="">
                   <MenuItem value="18-25">18-25</MenuItem>
                   <MenuItem value="26-35">26-35</MenuItem>
                   <MenuItem value="36-45">36-45</MenuItem>
@@ -208,7 +213,11 @@ const WorkoutPlanDashboard = () => {
 
               <FormControl fullWidth margin="normal" variant="outlined">
                 <InputLabel>Available Equipment</InputLabel>
-                <Select name="equipment" label="Available Equipment">
+                <Select
+                  name="equipment"
+                  label="Available Equipment"
+                  defaultValue=""
+                >
                   <MenuItem value="none">No equipment</MenuItem>
                   <MenuItem value="dumbbells">Dumbbells</MenuItem>
                   <MenuItem value="resistance-bands">Resistance Bands</MenuItem>
@@ -220,7 +229,11 @@ const WorkoutPlanDashboard = () => {
 
               <FormControl fullWidth margin="normal" variant="outlined">
                 <InputLabel>How many days per week?</InputLabel>
-                <Select name="daysPerWeek" label="How many days per week?">
+                <Select
+                  name="daysPerWeek"
+                  label="How many days per week?"
+                  defaultValue=""
+                >
                   <MenuItem value="3">3 days (Beginner friendly)</MenuItem>
                   <MenuItem value="4">4 days (Moderate)</MenuItem>
                   <MenuItem value="5">5 days (Active)</MenuItem>
@@ -231,6 +244,7 @@ const WorkoutPlanDashboard = () => {
               <TextField
                 fullWidth
                 label="Preferred Duration (minutes)"
+                defaultValue=""
                 name="preferredDuration"
                 margin="normal"
                 variant="outlined"
@@ -246,6 +260,7 @@ const WorkoutPlanDashboard = () => {
               <TextField
                 fullWidth
                 label="Any injuries or physical limitations? (Optional)"
+                defaultValue=""
                 name="limitations"
                 margin="normal"
                 variant="outlined"
@@ -257,6 +272,7 @@ const WorkoutPlanDashboard = () => {
               <FormControlLabel
                 control={<Checkbox name="includeCardio" />}
                 label="Include cardio"
+                defaultValue=""
                 sx={{ mt: 2, mb: 2 }}
               />
 

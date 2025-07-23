@@ -1,9 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-/**
- * List of all public (non-authenticated) routes.
- */
 const isPublicRoute = createRouteMatcher([
   "/",
   "/sign-up(.*)",
@@ -16,62 +13,63 @@ const isPublicRoute = createRouteMatcher([
 const isSignUpRoute = createRouteMatcher(["/sign-up(.*)"]);
 const isWorkoutPlanRoute = createRouteMatcher(["/workoutplan(.*)"]);
 
-/**
- * Middleware for protecting private routes with Clerk authentication.
- * - Redirects to sign-up if not signed in and route is not public.
- * - Redirects authenticated users away from sign-up to their dashboard.
- * - Checks subscription status before allowing access to /workoutplan.
- */
 export default clerkMiddleware(async (auth, req) => {
-  const userAuth = await auth();
-  const { userId } = userAuth;
-  const { pathname, origin } = req.nextUrl;
+  const { userId } = await auth();
+  const { pathname, origin, searchParams } = req.nextUrl;
 
-  if (pathname === "/api/check-subscription") {
-    // Always allow this API endpoint.
-    return NextResponse.next();
-  }
+  /* always allow the status‑check API */
+  if (pathname === "/api/check-subscription") return NextResponse.next();
 
-  if (!isPublicRoute(req) && !userId) {
-    // Redirects unauthenticated users to sign-up page.
+  /* unauthenticated user on a private page to /sign‑up */
+  if (!isPublicRoute(req) && !userId)
     return NextResponse.redirect(new URL("/sign-up", origin));
-  }
 
-  if (isSignUpRoute(req) && userId) {
-    // Prevents authenticated users from seeing the sign-up page again.
+  /* signed‑in user tries /sign‑up again to /workoutplan */
+  if (isSignUpRoute(req) && userId)
     return NextResponse.redirect(new URL("/workoutplan", origin));
-  }
 
+  /* subscription guard for /workoutplan */
   if (isWorkoutPlanRoute(req) && userId) {
+    /* 1 · first load right after Stripe */
+    if (searchParams.has("session_id")) {
+      /* give replicas time to sync; let React mount */
+      return NextResponse.next();
+    }
+
+    /* 2. subsequent navigations – call the API inside the same container */
     try {
-      const response = await fetch(
-        `${origin}/api/check-subscription?userId=${userId}`
+      const apiUrl = new URL(
+        `/api/check-subscription?userId=${userId}`,
+        req.url // builds an absolute same‑origin URL
       );
-      if (!response.ok) {
+
+      const res = await fetch(apiUrl.toString(), {
+        headers: { cookie: req.headers.get("cookie") ?? "" },
+        cache: "no-store",
+      });
+
+      if (!res.ok) return NextResponse.redirect(new URL("/subscribe", origin));
+
+      const { subscriptionActive } = (await res.json()) as {
+        subscriptionActive: boolean;
+      };
+
+      if (!subscriptionActive)
         return NextResponse.redirect(new URL("/subscribe", origin));
-      }
-      const data = await response.json();
-      if (!data.subscriptionActive) {
-        return NextResponse.redirect(new URL("/subscribe", origin));
-      }
     } catch {
+      /* any JSON / network error to safe fallback */
       return NextResponse.redirect(new URL("/subscribe", origin));
     }
   }
 
-  // Allow access if none of the above conditions apply.
+  /* everything else can continue */
   return NextResponse.next();
 });
 
-/**
- * Next.js matcher config: ensures middleware runs for API routes and app pages,
- * skipping static files or Next internals.
- */
+/*matcher*/
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };
