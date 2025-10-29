@@ -44,7 +44,7 @@ jobs:
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: ${{ secrets.GCP_SERVICE }}
+          service: ${{ secrets.GCP_CLOUD_RUN_SERVICE }}
           region: ${{ secrets.GCP_REGION }}
           image: ${{ secrets.GCP_IMAGE_BASE_URL }}:${{ github.sha }}
           env_vars: |
