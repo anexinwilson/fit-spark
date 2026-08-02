@@ -12,6 +12,7 @@ const config: Config = {
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
+  modulePathIgnorePatterns: ["<rootDir>/.next/"],
 
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
 };

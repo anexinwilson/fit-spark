@@ -50,7 +50,7 @@ export const POST = async () => {
       { message: "Profile created successfully" },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch {
     // Handles unexpected errors.
     return NextResponse.json({ error: "internal error." }, { status: 500 });
   }

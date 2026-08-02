@@ -1,7 +1,10 @@
+const mockStripe = {
+  checkout: { sessions: { create: jest.fn() } },
+};
+
 jest.mock('@/lib/stripe', () => ({
-  stripe: { checkout: { sessions: { create: jest.fn() } } },
+  getStripeClient: () => mockStripe,
 }));
-import { stripe } from '@/lib/stripe';
 
 import { req, read } from './test-utils';
 
@@ -21,7 +24,7 @@ describe('checkout', () => {
   });
 
   it('success returns url', async () => {
-    (stripe.checkout.sessions.create as jest.Mock).mockResolvedValue({ url: 'https://pay' });
+    mockStripe.checkout.sessions.create.mockResolvedValue({ url: 'https://pay' });
     const { POST } = await import('@/app/api/checkout/route'); 
     const res = await POST(
       req('http://test.local/checkout', 'POST', { ...base, planType: 'month' }) as any,

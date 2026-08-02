@@ -49,8 +49,8 @@ export const POST = async (request: NextRequest) => {
 
     // Returns the Stripe Checkout session URL for client-side redirection.
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
+  } catch {
     // Handles errors during Stripe session creation.
-    return NextResponse.json({ error: error }, { status: 500 });
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 };

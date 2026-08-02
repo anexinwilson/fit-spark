@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
+import { getErrorMessage } from "@/lib/errors";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
@@ -23,10 +24,11 @@ export const POST = async (request: NextRequest) => {
       signature || "",
       webhookSecret
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Responds with error if signature validation fails.
-    console.error("Webhook signature verification failed:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    const message = getErrorMessage(error);
+    console.error("Webhook signature verification failed:", message);
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 
   console.log("Processing webhook event:", event.type);
@@ -62,10 +64,11 @@ export const POST = async (request: NextRequest) => {
         // Logs unhandled event types for monitoring.
         console.log("Unhandled event type:", event.type);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Logs and reports errors during webhook processing.
-    console.error("Error processing webhook:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message = getErrorMessage(error);
+    console.error("Error processing webhook:", message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   // Acknowledges receipt of the webhook event to Stripe.
@@ -106,8 +109,8 @@ const handleCheckoutSessionCompleted = async (
       },
     });
     console.log("Profile updated successfully:", updatedProfile);
-  } catch (error: any) {
-    console.error("Error updating profile:", error.message);
+  } catch (error: unknown) {
+    console.error("Error updating profile:", getErrorMessage(error));
     // Throws to signal that the webhook should be retried.
     throw error;
   }
@@ -117,7 +120,9 @@ const handleCheckoutSessionCompleted = async (
  * Handles Stripe payment failure events by marking the user's subscription as inactive.
  */
 const handleInvoicePaymentFailed = async (invoice: Stripe.Invoice) => {
-  const subId = (invoice as any).subscription as string;
+  const subscription = invoice.parent?.subscription_details?.subscription;
+  const subId =
+    typeof subscription === "string" ? subscription : subscription?.id;
 
   if (!subId) {
     console.error("No subscription id found in invoice");
@@ -138,8 +143,8 @@ const handleInvoicePaymentFailed = async (invoice: Stripe.Invoice) => {
       return;
     }
     userId = profile.userId;
-  } catch (error: any) {
-    console.error("Error finding profile:", error.message);
+  } catch (error: unknown) {
+    console.error("Error finding profile:", getErrorMessage(error));
     return;
   }
 
@@ -152,8 +157,11 @@ const handleInvoicePaymentFailed = async (invoice: Stripe.Invoice) => {
       },
     });
     console.log("Profile updated for failed payment:", userId);
-  } catch (error: any) {
-    console.error("Error updating profile for failed payment:", error.message);
+  } catch (error: unknown) {
+    console.error(
+      "Error updating profile for failed payment:",
+      getErrorMessage(error)
+    );
   }
 };
 
@@ -180,8 +188,8 @@ const handleCustomerSubscriptionDeleted = async (
       return;
     }
     userId = profile.userId;
-  } catch (error: any) {
-    console.error("Error finding profile:", error.message);
+  } catch (error: unknown) {
+    console.error("Error finding profile:", getErrorMessage(error));
     return;
   }
 
@@ -196,10 +204,10 @@ const handleCustomerSubscriptionDeleted = async (
       },
     });
     console.log("Profile updated for deleted subscription:", userId);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(
       "Error updating profile for deleted subscription:",
-      error.message
+      getErrorMessage(error)
     );
   }
 };

@@ -5,60 +5,50 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout source code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Authenticate with GCP
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
-          credentials_json: '${{ secrets.GCLOUD_SERVICE_KEY }}'
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      # Configure GCP project
       - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v3
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-
-
-      # Configure Docker registry
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev
 
-      # Build container image
       - name: Build Docker image
         run: docker build --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" -t "${{ secrets.GCP_IMAGE_BASE_URL }}:${{ github.sha }}" .
 
-      # Push to registry
       - name: Push Docker image
         run: docker push "${{ secrets.GCP_IMAGE_BASE_URL }}:${{ github.sha }}"
 
-      # Deploy to production
-      - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ secrets.GCP_CLOUD_RUN_SERVICE }}
-          region: ${{ secrets.GCP_REGION }}
-          image: ${{ secrets.GCP_IMAGE_BASE_URL }}:${{ github.sha }}
-          env_vars: |
-            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-            CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}
-            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
-            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
-            STRIPE_PRICE_WEEKLY=${{ secrets.STRIPE_PRICE_WEEKLY }}
-            STRIPE_PRICE_MONTHLY=${{ secrets.STRIPE_PRICE_MONTHLY }}
-            STRIPE_PRICE_YEARLY=${{ secrets.STRIPE_PRICE_YEARLY }}
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }}
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
+      # Terraform owns service configuration; CI changes only the image.
+      - name: Update Cloud Run image
+        run: |
+          if gcloud run services describe "${{ secrets.GCP_CLOUD_RUN_SERVICE }}" --region "${{ secrets.GCP_REGION }}" --project "${{ secrets.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+            gcloud run services update "${{ secrets.GCP_CLOUD_RUN_SERVICE }}" \
+              --image "${{ secrets.GCP_IMAGE_BASE_URL }}:${{ github.sha }}" \
+              --region "${{ secrets.GCP_REGION }}" \
+              --project "${{ secrets.GCP_PROJECT_ID }}" \
+              --quiet
+          else
+            echo "Image pushed. Apply Terraform with deploy_cloud_run=true for the first Cloud Run deployment."
+          fi
 
-      # Deployment confirmation
       - name: Deployment completed
-        run: echo "Successfully deployed to Google Cloud Run!"
+        run: echo "GitHub Actions deployment workflow completed."

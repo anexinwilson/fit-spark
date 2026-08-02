@@ -1,0 +1,14 @@
+project_id        = "your-gcp-project-id"
+region            = "us-central1"
+github_repository = "your-github-user/fit-spark"
+
+# Leave false for the first foundation-only apply.
+deploy_cloud_run = false
+container_image  = ""
+
+# Add these before enabling deploy_cloud_run.
+clerk_publishable_key = "pk_test_..."
+stripe_price_weekly   = "price_..."
+stripe_price_monthly  = "price_..."
+stripe_price_yearly   = "price_..."
+next_public_base_url  = "https://your-cloud-run-or-custom-domain"

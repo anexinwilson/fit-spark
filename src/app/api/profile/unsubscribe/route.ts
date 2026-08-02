@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { currentUser } from "@clerk/nextjs/server";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 // Cancels the active Stripe subscription for the authenticated user.
 // Updates the local profile to reflect the cancellation.
-export const POST = async (request: NextRequest) => {
+export const POST = async () => {
   try {
     // Create the Stripe client for this request.
     const stripe = getStripeClient();
@@ -30,7 +30,7 @@ export const POST = async (request: NextRequest) => {
 
     // Requests Stripe to cancel the subscription at the end of the billing period.
     const subscriptionId = profile.stripeSubscriptionId;
-    const canceledSubscriptions = await stripe.subscriptions.update(
+    await stripe.subscriptions.update(
       subscriptionId,
       {
         cancel_at_period_end: true,
@@ -49,7 +49,7 @@ export const POST = async (request: NextRequest) => {
 
     // Returns updated subscription details.
     return NextResponse.json({ subscription: updatedProfile });
-  } catch (error: any) {
+  } catch {
     // Handles errors from Stripe or the database.
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }

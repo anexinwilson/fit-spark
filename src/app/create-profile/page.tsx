@@ -30,12 +30,12 @@ const createProfileRequest = async () => {
  * immediately upon mount (if signed in).
  * On success, redirects to /subscribe.
  */
-const createProfile = () => {
+const CreateProfile = () => {
   const { isLoaded, isSignedIn } = useUser();
   const router = useRouter()
   const { mutate, isPending } = useMutation<ApiResponse, Error>({
     mutationFn: createProfileRequest,
-    onSuccess: (data) => {
+    onSuccess: () => {
       // On success, route the user to the subscription page.
       router.push("/subscribe")
     },
@@ -50,7 +50,7 @@ const createProfile = () => {
     if (isLoaded && isSignedIn && !isPending) {
       mutate();
     }
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isPending, isSignedIn, mutate]);
   return (
     <>
       <div>Processing sign in</div>
@@ -58,4 +58,4 @@ const createProfile = () => {
   );
 }
 
-export default createProfile;
+export default CreateProfile;

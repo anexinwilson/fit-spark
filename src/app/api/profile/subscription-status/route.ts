@@ -23,7 +23,7 @@ export const GET = async () => {
     }
     // Returns the subscription tier information.
     return NextResponse.json({ subscription: profile });
-  } catch (error: any) {
+  } catch {
     // Handles errors during profile lookup.
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }

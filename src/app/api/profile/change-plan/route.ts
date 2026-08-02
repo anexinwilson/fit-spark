@@ -74,7 +74,7 @@ export const POST = async (request: NextRequest) => {
 
     // Returns the updated subscription details.
     return NextResponse.json({ subscription: updatedProfile  });
-  } catch (error: any) {
+  } catch {
     // Handles errors from Stripe or database updates.
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }

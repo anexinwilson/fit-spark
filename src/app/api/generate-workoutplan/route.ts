@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import { generateGeminiJson } from "@/lib/ai/gemini";
 
 /**
  * Structure for a daily workout plan.
@@ -11,7 +11,7 @@ interface DailyWorkoutPlan {
   cardio?: string;
 }
 
-// Generates a personalized multi-day workout plan using the OpenAI API.
+// Generates a personalized multi-day workout plan using the Gemini Developer API.
 // Reads user preferences from the request body and returns a JSON workout plan.
 export const POST = async (request: NextRequest) => {
   try {
@@ -22,17 +22,13 @@ export const POST = async (request: NextRequest) => {
       experienceLevel,
       preferredDuration,
       includeCardio,
-      days,
       ageRange,
       equipment,
       limitations,
       daysPerWeek,
     } = await request.json();
 
-    // Create an OpenAI client using the API key
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-
-    // Builds a prompt for OpenAI with all relevant user parameters.
+    // Builds a prompt for Gemini with all relevant user parameters.
     const prompt = `You are a certified fitness trainer.
     Generate a personalized ${daysPerWeek}-day workout plan for a user with the following preferences:
     - Workout Type: ${workoutType}
@@ -57,20 +53,7 @@ export const POST = async (request: NextRequest) => {
     - Words should have proper spacing
     **Output only JSON. No markdown, no explanations.**`;
 
-    // Requests a workout plan from OpenAI based on user preferences.
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1500,
-    });
-
-    const aiContent = response.choices[0].message.content!.trim();
+    const aiContent = await generateGeminiJson(prompt);
 
     let parsedWorkoutPlan: { [day: string]: DailyWorkoutPlan };
 
@@ -96,8 +79,8 @@ export const POST = async (request: NextRequest) => {
 
     // Returns the generated workout plan to the client.
     return NextResponse.json({ workoutPlan: parsedWorkoutPlan });
-  } catch (error: any) {
-    // Handles errors from OpenAI or unexpected sources.
+  } catch {
+    // Handles errors from Gemini or unexpected sources.
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 };

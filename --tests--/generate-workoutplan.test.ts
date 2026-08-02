@@ -1,11 +1,10 @@
 import { req, read } from './test-utils';
 
-jest.mock('openai', () => {
-  const ctor = jest.fn();
-  return { __esModule: true, default: ctor };
-});
-import OpenAI from 'openai';
-const mockedOpenAI = OpenAI as jest.MockedClass<typeof OpenAI>;
+jest.mock('@/lib/ai/gemini', () => ({
+  generateGeminiJson: jest.fn(),
+}));
+import { generateGeminiJson } from '@/lib/ai/gemini';
+const mockedGenerateGeminiJson = jest.mocked(generateGeminiJson);
 
 const payload = {
   workoutType: 'gym',
@@ -21,45 +20,29 @@ const payload = {
 };
 
 beforeEach(() => {
+  jest.restoreAllMocks();
   jest.resetAllMocks();
-  jest.resetModules();
 });
 
 describe('generate-workoutplan route', () => {
   it('500 on invalid JSON', async () => {
-    mockedOpenAI.mockImplementationOnce(() => ({
-      chat: {
-        completions: {
-          create: async () =>
-            ({ choices: [{ message: { content: 'oops' } }] }),
-        },
-      },
-    }) as any);
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockedGenerateGeminiJson.mockResolvedValueOnce('oops');
 
     const { POST } = await import('@/app/api/generate-workoutplan/route');
     const res = await POST(req('http://test.local/ai', 'POST', payload) as any);
     expect((await read(res)).status).toBe(500);
+    expect(consoleError).toHaveBeenCalled();
   });
 
-  it('parses valid JSON when OpenAI returns it', async () => {
+  it('parses valid JSON when Gemini returns it', async () => {
     const expectedPlan = { Monday: { warmup: 'run' } };
-    mockedOpenAI.mockImplementationOnce(() => ({
-      chat: {
-        completions: {
-          create: async () =>
-            ({ choices: [{ message: { content: JSON.stringify(expectedPlan) } }] }),
-        },
-      },
-    }) as any);
+    mockedGenerateGeminiJson.mockResolvedValueOnce(JSON.stringify(expectedPlan));
 
     const { POST } = await import('@/app/api/generate-workoutplan/route');
     const res  = await POST(req('http://test.local/ai', 'POST', payload) as any);
     const { body } = await read(res);
 
-    if ('workoutPlan' in body) {
-      expect(body.workoutPlan).toEqual(expectedPlan);
-    } else {
-      expect(body.error).toBe('Internal Error');
-    }
+    expect(body.workoutPlan).toEqual(expectedPlan);
   });
 });

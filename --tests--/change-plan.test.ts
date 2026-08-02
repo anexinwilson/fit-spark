@@ -5,13 +5,15 @@ jest.mock('@clerk/nextjs/server', () => ({ currentUser: jest.fn() }));
 jest.mock('@/lib/prisma', () => ({
   prisma: { profile: { findUnique: jest.fn(), update: jest.fn() } },
 }));
+const mockStripe = {
+  subscriptions: { retrieve: jest.fn(), update: jest.fn() },
+};
 jest.mock('@/lib/stripe', () => ({
-  stripe: { subscriptions: { retrieve: jest.fn(), update: jest.fn() } },
+  getStripeClient: () => mockStripe,
 }));
 
 import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { stripe } from '@/lib/stripe';
 
 describe('change-plan', () => {
   beforeEach(() => {
@@ -20,10 +22,10 @@ describe('change-plan', () => {
       userId: 'u1',
       stripeSubscriptionId: 'sub_123',
     });
-    (stripe.subscriptions.retrieve as jest.Mock).mockResolvedValue({
+    mockStripe.subscriptions.retrieve.mockResolvedValue({
       items: { data: [{ id: 'si_1' }] },
     });
-    (stripe.subscriptions.update as jest.Mock).mockResolvedValue({ id: 'sub_new' });
+    mockStripe.subscriptions.update.mockResolvedValue({ id: 'sub_new' });
     (prisma.profile.update as jest.Mock).mockResolvedValue({ subscriptionTier: 'month' });
   });
 

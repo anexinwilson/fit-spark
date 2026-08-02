@@ -23,7 +23,7 @@ import { useState } from "react";
  * Integrates Clerk for authentication and user state.
  */
 const NavBar = () => {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, user } = useUser();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   // Handle menu open and close for mobile

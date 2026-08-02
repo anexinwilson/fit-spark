@@ -1,5 +1,5 @@
 # Use a lightweight Node.js base image
-FROM node:18-alpine AS base
+FROM node:22-alpine AS base
 
 # Stage 1: Install production dependencies
 FROM base AS deps
@@ -18,8 +18,9 @@ COPY . .
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
-# Use local DB for Prisma client generation to avoid hitting production DB
-ENV DATABASE_URL="file:./dev.db"
+# Prisma only validates the URL and generates code during this stage; it does
+# not connect to this placeholder database.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/fit_spark"
 RUN npx prisma generate
 
 # Build optimized Next.js production output

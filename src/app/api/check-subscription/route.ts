@@ -24,7 +24,7 @@ export const GET = async (request: NextRequest) => {
     return NextResponse.json({
       subscriptionActive: profile?.subscriptionActive,
     });
-  } catch (error: any) {
+  } catch {
     // Handles unexpected errors.
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
