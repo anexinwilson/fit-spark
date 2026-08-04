@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/tests/
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -51,4 +54,7 @@ next-env.d.ts
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+**/backend.hcl
+!**/backend.hcl.example
+*.tfplan
 crash.log

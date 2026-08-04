@@ -2,318 +2,296 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Box,
-  CircularProgress,
-  Avatar,
-  Typography,
-  Container,
-  Divider,
-  Chip,
-  Paper,
-  Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-} from "@mui/material";
-import { availablePlans } from "@/lib/plans";
-import toast, { Toaster } from "react-hot-toast";
+import { AlertCircle, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
-/**
- * Fetches the current user's subscription status from the backend.
- */
-const fetchSubscriptionStatus = async () => {
-  const response = await fetch("/api/profile/subscription-status");
-  return response.json();
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { availablePlans } from "@/features/billing/plans";
+
+type SubscriptionStatus = {
+  subscription: {
+    subscriptionTier: string | null;
+    subscriptionActive: boolean;
+    cancelAtPeriodEnd: boolean;
+  };
 };
 
-/**
- * Sends a request to update the user's subscription plan.
- */
-const updatePlan = async (newPlan: string) => {
-  const response = await fetch("/api/profile/change-plan", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ newPlan }),
-  });
-  return response.json();
-};
+async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  const data = (await response.json()) as T & { error?: string };
 
-/**
- * Sends a request to unsubscribe the user.
- */
-const unsubscibe = async () => {
-  const response = await fetch("/api/profile/unsubscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-  });
-  return response.json();
-};
+  if (!response.ok) {
+    throw new Error(data.error ?? "Request failed");
+  }
 
-/**
- * Renders the user's profile page, including subscription details,
- * plan management, and the ability to unsubscribe.
- * Only accessible for signed-in users.
- */
-const Profile = () => {
-  const [selectedPlan, setSelectedPlan] = useState<string>("");
+  return data;
+}
+
+export default function ProfilePage() {
+  const [selectedPlan, setSelectedPlan] = useState("");
   const { isLoaded, isSignedIn, user } = useUser();
   const queryClient = useQueryClient();
-  const router = useRouter();
-
-  const {
-    data: subscription,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useQuery({
+  const subscriptionQuery = useQuery({
     queryKey: ["subscription"],
-    queryFn: fetchSubscriptionStatus,
+    queryFn: () =>
+      requestJson<SubscriptionStatus>("/api/profile/subscription-status"),
     enabled: isLoaded && isSignedIn,
     staleTime: 5 * 60 * 1000,
   });
 
-  // Handles subscription plan updates
-  const { mutate: updatePlanMutation, isPending: isUpdatePlanPending } =
-    useMutation({
-      mutationFn: updatePlan,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["subscription"] });
-        toast.success("Subscription plan updated successfully!");
-        refetch();
-      },
-      onError: () => {
-        toast.error("Error updating plan");
-      },
-    });
+  const refreshSubscription = () =>
+    queryClient.invalidateQueries({ queryKey: ["subscription"] });
 
-  // Handles unsubscribing from the service
-  const { mutate: unsubscibeMutation, isPending: isUnsubscribedPending } =
-    useMutation({
-      mutationFn: unsubscibe,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["subscription"] });
-        router.push("/subscribe");
-      },
-      onError: () => {
-        toast.error("Error unsubscribing");
-      },
-    });
+  const changePlan = useMutation({
+    mutationFn: (newPlan: string) =>
+      requestJson("/api/profile/change-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPlan }),
+      }),
+    onSuccess: async () => {
+      await refreshSubscription();
+      setSelectedPlan("");
+      toast.success("Subscription plan updated");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
-  // Finds the user's current plan from the available plans list.
-  const currentPlan = availablePlans.find(
-    (plan) => plan.interval === subscription?.subscription.subscriptionTier
-  );
+  const cancelSubscription = useMutation({
+    mutationFn: () =>
+      requestJson("/api/profile/unsubscribe", { method: "POST" }),
+    onSuccess: async () => {
+      await refreshSubscription();
+      toast.success("Cancellation scheduled");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
-  // Handles plan change requests.
-  const handleUpdatePlan = () => {
-    if (selectedPlan) {
-      updatePlanMutation(selectedPlan);
-    }
-    setSelectedPlan("");
-  };
-
-  // Handles the user clicking "unsubscribe."
-  const handleUnsubscribe = () => {
-    if (
-      confirm(
-        "Are you sure you want to unscribe? You will lose access to premium features."
-      )
-    ) {
-      unsubscibeMutation();
-    }
-  };
-
-  // Loading state while fetching user data
   if (!isLoaded) {
     return (
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        height="50vh"
-      >
-        <CircularProgress />
-        <Typography ml={2}>Loading...</Typography>
-      </Box>
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-12">
+        <Skeleton className="h-36 w-full" />
+        <Skeleton className="h-72 w-full" />
+      </div>
     );
   }
 
-  // Redirect if user is not signed in
-  if (!isSignedIn) {
+  if (!isSignedIn || !user) {
     return (
-      <Container maxWidth="sm" sx={{ py: 6 }}>
-        <Alert severity="warning">Please sign in to view your profile.</Alert>
-      </Container>
+      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+        <AlertCircle className="mx-auto size-10 text-amber-600" />
+        <h1 className="mt-4 text-2xl font-semibold">
+          Sign in to view your profile
+        </h1>
+        <Button
+          className="mt-6"
+          nativeButton={false}
+          render={<Link href="/sign-up" />}
+        >
+          Continue
+        </Button>
+      </div>
     );
   }
 
-  // Render the profile UI
-  return (
-    <Container maxWidth="md" sx={{ py: 6 }}>
-      <Toaster position="top-center" />
-
-      <Paper elevation={4} sx={{ borderRadius: 4, p: 4 }}>
-        <Box
-          display="flex"
-          flexDirection={{ xs: "column", sm: "row" }}
-          alignItems="center"
-          gap={3}
-        >
-          {user.imageUrl && (
-            <Avatar
-              src={user.imageUrl}
-              alt="User Avatar"
-              sx={{ width: 100, height: 100 }}
-            />
-          )}
-          <Box>
-            <Typography variant="h5" fontWeight="bold">
-              {user.firstName} {user.lastName}
-            </Typography>
-            <Typography color="text.secondary">
-              {user.primaryEmailAddress?.emailAddress}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 4 }} />
-
-        <Typography variant="h5" fontWeight="medium" gutterBottom>
-          Subscription Details
-        </Typography>
-
-        {isLoading ? (
-          <Box display="flex" alignItems="center" gap={2}>
-            <CircularProgress size={24} />
-            <Typography>Loading subscription details...</Typography>
-          </Box>
-        ) : isError ? (
-          <Alert severity="error">{error?.message}</Alert>
-        ) : subscription ? (
-          <Box
-            sx={{
-              mt: 2,
-              p: 3,
-              borderRadius: 2,
-              backgroundColor: "grey.100",
-              display: "flex",
-              gap: 4,
-              flexWrap: "wrap",
-            }}
-          >
-            <Box sx={{ flex: 1, minWidth: 250, mt: 3 }}>
-              {currentPlan ? (
-                <>
-                  <Typography variant="h6">
-                    <strong>Plan:</strong> {currentPlan.name}
-                  </Typography>
-                  <Typography variant="h6">
-                    <strong>Amount:</strong> {currentPlan.amount}
-                    {currentPlan.currency}
-                  </Typography>
-                  <Box display="flex" alignItems="center" gap={1} mt={1}>
-                    <Typography variant="h6">
-                      <strong>Status:</strong>
-                    </Typography>
-                    <Chip
-                      label="ACTIVE"
-                      size="small"
-                      color="primary"
-                      variant="outlined"
-                    />
-                  </Box>
-                </>
-              ) : (
-                <Typography color="text.secondary">
-                  No active subscription.
-                </Typography>
-              )}
-            </Box>
-
-            {currentPlan && (
-              <Box
-                sx={{
-                  flex: 1,
-                  minWidth: 250,
-                  minHeight: 150,
-                  textAlign: "center",
-                }}
-              >
-                <Typography variant="h6" gutterBottom>
-                  Change subscription
-                </Typography>
-
-                <FormControl
-                  fullWidth
-                  disabled={isUpdatePlanPending}
-                  sx={{ mb: 2, width: 240 }}
-                >
-                  <InputLabel id="plan-select-label">
-                    Select New Plan
-                  </InputLabel>
-                  <Select
-                    labelId="plan-select-label"
-                    value={selectedPlan || currentPlan.interval}
-                    label="Select New Plan"
-                    onChange={(event) => setSelectedPlan(event.target.value)}
-                  >
-                    {availablePlans.map((plan) => (
-                      <MenuItem key={plan.interval} value={plan.interval}>
-                        {plan.name} - ${plan.amount} / {plan.interval}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <Button
-                  variant="contained"
-                  onClick={handleUpdatePlan}
-                  disabled={!selectedPlan || isUpdatePlanPending}
-                  sx={{ width: 240 }}
-                >
-                  Save Change
-                </Button>
-
-                {isUpdatePlanPending && (
-                  <Box display="flex" alignItems="center" mt={2} gap={1}>
-                    <CircularProgress size={20} />
-                    <Typography>Updating Plan...</Typography>
-                  </Box>
-                )}
-              </Box>
-            )}
-          </Box>
-        ) : (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            You are not subscribed to any plan.
-          </Alert>
-        )}
-
-        {subscription?.subscription.subscriptionActive && (
-          <Box mt={4} textAlign="center">
-            <Typography variant="h6" gutterBottom>
-              Unsubscribe
-            </Typography>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={handleUnsubscribe}
-              disabled={isUnsubscribedPending}
-              sx={{ minWidth: 200 }}
-            >
-              {isUnsubscribedPending ? "Unsubscribing..." : "Unsubscribe"}
-            </Button>
-          </Box>
-        )}
-      </Paper>
-    </Container>
+  const subscription = subscriptionQuery.data?.subscription;
+  const currentPlan = availablePlans.find(
+    (plan) => plan.interval === subscription?.subscriptionTier,
   );
-};
+  const initials =
+    [user.firstName, user.lastName]
+      .filter(Boolean)
+      .map((name) => name?.[0])
+      .join("") || "FS";
 
-export default Profile;
+  return (
+    <section className="min-h-[calc(100svh-4rem)] bg-slate-50 py-12">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6">
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:text-left">
+            <Avatar className="size-20">
+              <AvatarImage src={user.imageUrl} alt="" />
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h1 className="text-2xl font-bold">
+                {[user.firstName, user.lastName].filter(Boolean).join(" ") ||
+                  "Your profile"}
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                {user.primaryEmailAddress?.emailAddress}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Subscription</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {subscriptionQuery.isPending ? (
+              <div className="text-muted-foreground flex items-center gap-3">
+                <Loader2 className="animate-spin" aria-hidden="true" />
+                Loading subscription details
+              </div>
+            ) : subscriptionQuery.isError ? (
+              <div
+                role="alert"
+                className="rounded-lg bg-red-50 p-4 text-red-800"
+              >
+                {subscriptionQuery.error.message}
+              </div>
+            ) : currentPlan ? (
+              <div className="grid gap-8 md:grid-cols-2">
+                <div className="rounded-xl bg-slate-50 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="text-lg font-semibold">
+                      {currentPlan.name}
+                    </h2>
+                    <Badge
+                      variant={
+                        subscription?.subscriptionActive
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {subscription?.subscriptionActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  {subscription?.cancelAtPeriodEnd && (
+                    <p className="mt-3 text-sm text-amber-700">
+                      Cancellation is scheduled. Access remains active until
+                      Stripe ends the paid period.
+                    </p>
+                  )}
+                  <p className="mt-3 text-2xl font-bold text-blue-700">
+                    {new Intl.NumberFormat("en-CA", {
+                      style: "currency",
+                      currency: currentPlan.currency,
+                    }).format(currentPlan.amount)}
+                    <span className="text-muted-foreground text-sm font-normal">
+                      /{currentPlan.interval}
+                    </span>
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="plan-select" className="text-sm font-medium">
+                    Change plan
+                  </label>
+                  <Select
+                    value={selectedPlan}
+                    onValueChange={(value) => setSelectedPlan(value ?? "")}
+                  >
+                    <SelectTrigger
+                      id="plan-select"
+                      className="mt-2 h-10 w-full"
+                    >
+                      <SelectValue placeholder="Select a new plan" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availablePlans
+                        .filter(
+                          (plan) => plan.interval !== currentPlan.interval,
+                        )
+                        .map((plan) => (
+                          <SelectItem key={plan.interval} value={plan.interval}>
+                            {plan.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    className="mt-3 h-10 w-full bg-blue-600 hover:bg-blue-700"
+                    disabled={!selectedPlan || changePlan.isPending}
+                    onClick={() => changePlan.mutate(selectedPlan)}
+                  >
+                    {changePlan.isPending && (
+                      <Loader2 className="animate-spin" />
+                    )}
+                    Save change
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-slate-50 p-5">
+                <p className="text-muted-foreground">No active subscription.</p>
+                <Button
+                  className="mt-4"
+                  nativeButton={false}
+                  render={<Link href="/subscribe" />}
+                >
+                  View plans
+                </Button>
+              </div>
+            )}
+
+            {subscription?.subscriptionActive &&
+              !subscription.cancelAtPeriodEnd && (
+                <div className="mt-8 border-t pt-6">
+                  <h2 className="font-semibold">Cancel subscription</h2>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Your billing will stop according to the cancellation terms
+                    of your current plan.
+                  </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger
+                      render={<Button variant="destructive" className="mt-4" />}
+                    >
+                      Cancel subscription
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Cancel your subscription?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This schedules cancellation with Stripe. You can keep
+                          using FitSpark until your paid access ends.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Keep subscription</AlertDialogCancel>
+                        <AlertDialogAction
+                          variant="destructive"
+                          disabled={cancelSubscription.isPending}
+                          onClick={() => cancelSubscription.mutate()}
+                        >
+                          Confirm cancellation
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  );
+}

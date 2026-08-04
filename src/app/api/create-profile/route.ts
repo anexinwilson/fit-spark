@@ -1,5 +1,5 @@
+import { getAuthenticatedUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 // Creates a user profile if it does not already exist.
@@ -7,12 +7,9 @@ import { NextResponse } from "next/server";
 export const POST = async () => {
   try {
     // Retrieves the current authenticated user's information from Clerk.
-    const clerkUser = await currentUser();
+    const clerkUser = await getAuthenticatedUser();
     if (!clerkUser) {
-      return NextResponse.json(
-        { error: "User not found in Clerk" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Extracts the user's email address from Clerk data.
@@ -20,7 +17,7 @@ export const POST = async () => {
     if (!email) {
       return NextResponse.json(
         { error: "User does not have an email address" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -48,7 +45,7 @@ export const POST = async () => {
     // Confirms successful creation of the profile.
     return NextResponse.json(
       { message: "Profile created successfully" },
-      { status: 201 }
+      { status: 201 },
     );
   } catch {
     // Handles unexpected errors.

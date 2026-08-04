@@ -1,20 +1,16 @@
-/**
- * TypeScript interface describing a subscription plan.
- */
+export const planIntervals = ["week", "month", "year"] as const;
+export type PlanInterval = (typeof planIntervals)[number];
+
 export interface Plan {
   name: string;
   amount: number;
   currency: string;
-  interval: string;
+  interval: PlanInterval;
   isPopular?: boolean;
   description: string;
   features: string[];
 }
 
-/**
- * List of all subscription plans offered in the app.
- * Each plan includes display and business logic information.
- */
 export const availablePlans: Plan[] = [
   {
     name: "Weekly Plan",
@@ -57,16 +53,18 @@ export const availablePlans: Plan[] = [
   },
 ];
 
-/**
- * Maps plan interval types to Stripe price IDs, loaded from env variables.
- */
-const priceIDMap: Record<string, string> = {
-  week: process.env.STRIPE_PRICE_WEEKLY!,
-  month: process.env.STRIPE_PRICE_MONTHLY!,
-  year: process.env.STRIPE_PRICE_YEARLY!,
+const priceEnvironmentKey: Record<
+  PlanInterval,
+  Parameters<typeof requireServerEnvironment>[0]
+> = {
+  week: "STRIPE_PRICE_WEEKLY",
+  month: "STRIPE_PRICE_MONTHLY",
+  year: "STRIPE_PRICE_YEARLY",
 };
 
-/**
- * Utility function: returns the Stripe price ID for a given plan type.
- */
-export const getPriceIDFromType = (planType: string) => priceIDMap[planType];
+export const isPlanInterval = (value: unknown): value is PlanInterval =>
+  typeof value === "string" && planIntervals.includes(value as PlanInterval);
+
+export const getPriceId = (planType: PlanInterval) =>
+  requireServerEnvironment(priceEnvironmentKey[planType]);
+import { requireServerEnvironment } from "@/lib/server-env";

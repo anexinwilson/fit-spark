@@ -1,199 +1,118 @@
 "use client";
 
-import { SignedIn, SignedOut, SignOutButton, useUser } from "@clerk/nextjs";
-import {
-  AppBar,
-  Toolbar,
-  Box,
-  Button,
-  Avatar,
-  Typography,
-  IconButton,
-  Menu,
-  MenuItem,
-} from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
-import Link from "next/link";
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { Dumbbell, Menu } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import Link from "next/link";
 
-/**
- * Main navigation bar component for the application.
- * Displays app logo, links, user profile, and authentication actions.
- * Integrates Clerk for authentication and user state.
- */
-const NavBar = () => {
-  const { isLoaded, user } = useUser();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-  // Handle menu open and close for mobile
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) =>
-    setAnchorEl(event.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
+const authenticatedLinks = [
+  { href: "/workoutplan", label: "Workout plan" },
+  { href: "/profile", label: "Profile" },
+];
 
-  // Shows a loading bar while user data is being fetched.
-  if (!isLoaded) {
-    return (
-      <AppBar
-        position="sticky"
-        sx={{ background: "linear-gradient(90deg, #1976d2, #42a5f5)" }}
-      >
-        <Toolbar>
-          <Typography color="white">Loading...</Typography>
-        </Toolbar>
-      </AppBar>
-    );
-  }
-
-  // Renders navigation options depending on whether the user is signed in.
+export default function NavBar() {
   return (
-    <AppBar
-      position="sticky"
-      sx={{
-        background: "linear-gradient(90deg, #1976d2, #42a5f5)",
-        color: "white",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-      }}
-    >
-      <Toolbar sx={{ justifyContent: "space-between", py: 1 }}>
-        {/* Logo and brand name as clickable link */}
+    <header className="sticky top-0 z-40 border-b border-blue-400/30 bg-linear-to-r from-blue-700 to-sky-500 text-white shadow-sm">
+      <nav
+        aria-label="Primary navigation"
+        className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
+      >
         <Link
           href="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            textDecoration: "none",
-            gap: "8px",
-          }}
+          className="flex items-center gap-2 rounded-lg focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
         >
-          <Image src="/app-icon.png" width={45} height={45} alt="Logo" />
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: "bold", color: "white", fontSize: "1.8rem" }}
-          >
+          <Image
+            src="/app-icon.png"
+            width={40}
+            height={40}
+            sizes="40px"
+            alt=""
+            className="size-10 rounded-xl"
+          />
+          <span className="text-xl font-bold tracking-tight sm:text-2xl">
             FitSpark
-          </Typography>
+          </span>
         </Link>
 
-        {/* Desktop navigation and actions */}
-        <Box
-          sx={{
-            display: { xs: "none", md: "flex" },
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <SignedIn>
-            {/* If signed in, show workout plan link, sign out button, and avatar linking to profile */}
-            <Link href="/workoutplan">
-              <Typography
-                variant="h6"
-                component="span"
-                sx={{ color: "white", fontWeight: "medium" }}
-              >
-                Workout Plan
-              </Typography>
-            </Link>
-
-            <SignOutButton>
-              <Button
-                variant="outlined"
-                sx={{
-                  color: "white",
-                  borderColor: "white",
-                  fontSize: "15px",
-                  px: "12px",
-                  py: "6px",
-                }}
-              >
-                Sign Out
-              </Button>
-            </SignOutButton>
-
-            {user?.imageUrl && (
-              <Link href="/profile">
-                <IconButton sx={{ p: 0 }}>
-                  <Avatar
-                    src={user.imageUrl}
-                    alt="Profile Picture"
-                    sx={{ width: 40, height: 40 }}
-                  />
-                </IconButton>
-              </Link>
-            )}
-          </SignedIn>
-
-          <SignedOut>
-            {/* If not signed in, show sign up action */}
+        <div className="hidden items-center gap-2 md:flex">
+          <Show when="signed-in">
             <Button
-              variant="outlined"
-              sx={{
-                textTransform: "none",
-                color: "white",
-                borderColor: "white",
-                fontWeight: "bold",
-                fontSize: "15px",
-                px: "14px",
-                py: "6px",
-              }}
-              component={Link}
-              href="/sign-up"
+              nativeButton={false}
+              variant="ghost"
+              className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
+              render={<Link href="/workoutplan" />}
             >
-              Sign Up
+              <Dumbbell aria-hidden="true" />
+              Workout plan
             </Button>
-          </SignedOut>
-        </Box>
+            <UserButton />
+          </Show>
 
-        {/* Mobile view */}
-        <Box
-          sx={{
-            display: { xs: "flex", md: "none" },
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <IconButton sx={{ color: "white" }} onClick={handleMenuOpen}>
-            <MenuIcon />
-          </IconButton>
+          <Show when="signed-out">
+            <SignInButton>
+              <Button
+                variant="ghost"
+                className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
+              >
+                Sign in
+              </Button>
+            </SignInButton>
+            <SignUpButton>
+              <Button className="h-10 bg-white px-4 text-blue-700 hover:bg-blue-50">
+                Start free
+              </Button>
+            </SignUpButton>
+          </Show>
+        </div>
 
-          <SignedIn>
-            {user?.imageUrl && (
-              <Link href="/profile">
-                <IconButton sx={{ p: 0 }}>
-                  <Avatar
-                    src={user.imageUrl}
-                    alt="Profile Picture"
-                    sx={{ width: 40, height: 40 }}
-                  />
-                </IconButton>
-              </Link>
-            )}
-          </SignedIn>
-        </Box>
-
-        {/* Dropdown menu for mobile */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleMenuClose}
-        >
-          <SignedIn>
-            <MenuItem component={Link} href="/workoutplan">
-              Workout Plan
-            </MenuItem>
-            <MenuItem>
-              <SignOutButton>Sign Out</SignOutButton>
-            </MenuItem>
-          </SignedIn>
-          <SignedOut>
-            <MenuItem component={Link} href="/sign-up">
-              Sign Up
-            </MenuItem>
-          </SignedOut>
-        </Menu>
-      </Toolbar>
-    </AppBar>
+        <div className="flex items-center gap-3 md:hidden">
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Open navigation"
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-lg"
+                  className="text-white hover:bg-white/15 hover:text-white"
+                />
+              }
+            >
+              <Menu aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <Show when="signed-in">
+                {authenticatedLinks.map((link) => (
+                  <DropdownMenuItem
+                    key={link.href}
+                    render={<Link href={link.href} />}
+                  >
+                    {link.label}
+                  </DropdownMenuItem>
+                ))}
+              </Show>
+              <Show when="signed-out">
+                <DropdownMenuItem>
+                  <SignInButton>Sign in</SignInButton>
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <SignUpButton>Start free</SignUpButton>
+                </DropdownMenuItem>
+              </Show>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </nav>
+    </header>
   );
-};
-
-export default NavBar;
+}

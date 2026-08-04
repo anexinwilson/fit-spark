@@ -1,0 +1,8 @@
+.next
+node_modules
+coverage
+src/generated
+scratch
+infra/terraform/.terraform
+package-lock.json
+README.md

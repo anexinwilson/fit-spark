@@ -3,14 +3,14 @@ output "artifact_image_base_url" {
   value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.app.repository_id}/fit-spark"
 }
 
-output "github_workload_identity_provider" {
-  description = "Set this as the GCP_WORKLOAD_IDENTITY_PROVIDER GitHub Actions secret."
-  value       = google_iam_workload_identity_pool_provider.github.name
+output "build_service_account" {
+  description = "Least-privilege service account used by manual Cloud Build submissions."
+  value       = google_service_account.build.email
 }
 
-output "github_service_account" {
-  description = "Set this as the GCP_SERVICE_ACCOUNT GitHub Actions secret."
-  value       = google_service_account.github_deployer.email
+output "build_source_bucket" {
+  description = "Short-lived staging bucket used for manual Cloud Build source uploads."
+  value       = google_storage_bucket.build_source.url
 }
 
 output "runtime_secret_names" {

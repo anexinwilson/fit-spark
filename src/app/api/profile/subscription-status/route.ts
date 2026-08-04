@@ -1,5 +1,5 @@
+import { getAuthenticatedUserId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 // Retrieves the user's current subscription tier from their profile.
@@ -7,19 +7,23 @@ import { NextResponse } from "next/server";
 export const GET = async () => {
   try {
     // Retrieves the authenticated user.
-    const clerkUser = await currentUser();
-    if (!clerkUser?.id) {
-      return NextResponse.json({ error: "Unauthorized" });
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Selects only the subscription tier field from the profile.
     const profile = await prisma.profile.findUnique({
-      where: { userId: clerkUser.id },
-      select: { subscriptionTier: true, subscriptionActive: true },
+      where: { userId },
+      select: {
+        subscriptionTier: true,
+        subscriptionActive: true,
+        cancelAtPeriodEnd: true,
+      },
     });
 
     if (!profile) {
-      return NextResponse.json({ error: "No profile found" });
+      return NextResponse.json({ error: "No profile found" }, { status: 404 });
     }
     // Returns the subscription tier information.
     return NextResponse.json({ subscription: profile });

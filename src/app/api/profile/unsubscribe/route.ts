@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 // Cancels the active Stripe subscription for the authenticated user.
@@ -10,40 +9,38 @@ export const POST = async () => {
     // Create the Stripe client for this request.
     const stripe = getStripeClient();
     // Retrieves the authenticated user's info.
-    const clerkUser = await currentUser();
-    if (!clerkUser?.id) {
-      return NextResponse.json({ error: "Unauthorized" });
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Looks up the user's profile and subscription ID.
     const profile = await prisma.profile.findUnique({
-      where: { userId: clerkUser.id },
+      where: { userId },
     });
 
     if (!profile) {
-      return NextResponse.json({ error: "No Profile Found" });
+      return NextResponse.json({ error: "No profile found" }, { status: 404 });
     }
 
     if (!profile.stripeSubscriptionId) {
-      return NextResponse.json({ error: "No Active Subscription Found" });
+      return NextResponse.json(
+        { error: "No active subscription found" },
+        { status: 409 },
+      );
     }
 
     // Requests Stripe to cancel the subscription at the end of the billing period.
     const subscriptionId = profile.stripeSubscriptionId;
-    await stripe.subscriptions.update(
-      subscriptionId,
-      {
-        cancel_at_period_end: true,
-      }
-    );
+    const subscription = await stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+    });
 
-    // Updates the user's profile to remove subscription info.
+    // Keep entitlement and the Stripe ID until the paid period actually ends.
     const updatedProfile = await prisma.profile.update({
-      where: { userId: clerkUser.id },
+      where: { userId },
       data: {
-        subscriptionTier: null,
-        stripeSubscriptionId: null,
-        subscriptionActive: false,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end,
       },
     });
 
@@ -54,3 +51,4 @@ export const POST = async () => {
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 };
+import { getAuthenticatedUserId } from "@/lib/auth";

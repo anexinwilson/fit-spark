@@ -9,13 +9,23 @@ variable "region" {
   default     = "us-central1"
 }
 
-variable "github_repository" {
-  description = "GitHub repository allowed to deploy, in owner/repository format."
+variable "operator_email" {
+  description = "Google account allowed to submit manual Fit Spark builds."
   type        = string
 
   validation {
-    condition     = can(regex("^[^/]+/[^/]+$", var.github_repository))
-    error_message = "github_repository must use owner/repository format."
+    condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.operator_email))
+    error_message = "operator_email must be a valid email address."
+  }
+}
+
+variable "billing_account_id" {
+  description = "Billing account ID used for the project-scoped cost alert budget."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[0-9A-F]{6}-[0-9A-F]{6}-[0-9A-F]{6}$", var.billing_account_id))
+    error_message = "billing_account_id must use the XXXXXX-XXXXXX-XXXXXX format."
   }
 }
 

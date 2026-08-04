@@ -1,86 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateGeminiJson } from "@/lib/ai/gemini";
 
-/**
- * Structure for a daily workout plan.
- */
-interface DailyWorkoutPlan {
-  warmup?: string;
-  mainWorkout?: string;
-  cooldown?: string;
-  cardio?: string;
-}
+import { createWorkoutPlan } from "@/features/workout-plan/server/generate-workout-plan";
+import { workoutPlanSchema } from "@/features/workout-plan/schema";
+import { getAuthenticatedUserId } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { GeminiApiError } from "@/lib/ai/gemini";
 
-// Generates a personalized multi-day workout plan using the Gemini Developer API.
-// Reads user preferences from the request body and returns a JSON workout plan.
-export const POST = async (request: NextRequest) => {
+export async function POST(request: NextRequest) {
   try {
-    // Extracts user preferences from the request body.
-    const {
-      workoutType,
-      fitnessGoal,
-      experienceLevel,
-      preferredDuration,
-      includeCardio,
-      ageRange,
-      equipment,
-      limitations,
-      daysPerWeek,
-    } = await request.json();
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Builds a prompt for Gemini with all relevant user parameters.
-    const prompt = `You are a certified fitness trainer.
-    Generate a personalized ${daysPerWeek}-day workout plan for a user with the following preferences:
-    - Workout Type: ${workoutType}
-    - Fitness Goal: ${fitnessGoal}
-    - Experience Level: ${experienceLevel}
-    - Age: ${ageRange}
-    - Equipment: ${equipment}
-    - Limitations: ${limitations || "None"}
-    - Days per week: ${daysPerWeek}
-    - Daily Duration: ${preferredDuration} minutes
-    - Include Cardio: ${includeCardio ? "Yes" : "No"}
-
-    Each day should include the following keys in camelCase format:
-    - warmup
-    - mainWorkout
-    - cooldown
-    ${includeCardio ? "- cardio" : ""}
-
-    Return the result as a JSON object where the keys are the days of the week starting from Monday, e.g. "Monday", "Tuesday", ..., up to the number of days requested.
-    - Dont workout if the user is giving more than 3 day availability, dont workout the same body part without a brake of 48 hours.
-    - Humanise the input so that a person understand.
-    - Words should have proper spacing
-    **Output only JSON. No markdown, no explanations.**`;
-
-    const aiContent = await generateGeminiJson(prompt);
-
-    let parsedWorkoutPlan: { [day: string]: DailyWorkoutPlan };
-
-    try {
-      // Attempts to parse the returned JSON workout plan.
-      parsedWorkoutPlan = JSON.parse(aiContent);
-    } catch (parseError) {
-      // Returns an error if parsing fails.
-      console.error("Error parsing AI response", parseError);
+    const profile = await prisma.profile.findUnique({
+      where: { userId },
+      select: { subscriptionActive: true },
+    });
+    if (!profile?.subscriptionActive) {
       return NextResponse.json(
-        { error: "Failed to parse workout plan." },
-        { status: 500 }
+        { error: "An active subscription is required" },
+        { status: 403 },
       );
     }
 
-    // Ensures the parsed result is an object.
-    if (typeof parsedWorkoutPlan !== "object" || parsedWorkoutPlan === null) {
+    const input = workoutPlanSchema.safeParse(await request.json());
+    if (!input.success) {
       return NextResponse.json(
-        { error: "Failed to parse workout plan." },
-        { status: 500 }
+        { error: "Workout preferences are invalid" },
+        { status: 400 },
       );
     }
 
-    // Returns the generated workout plan to the client.
-    return NextResponse.json({ workoutPlan: parsedWorkoutPlan });
-  } catch {
-    // Handles errors from Gemini or unexpected sources.
+    const workoutPlan = await createWorkoutPlan(input.data);
+    return NextResponse.json({ workoutPlan });
+  } catch (error: unknown) {
+    console.error("Workout plan generation failed", error);
+
+    if (error instanceof GeminiApiError) {
+      return NextResponse.json(
+        { error: "Workout plan generation is temporarily unavailable." },
+        { status: error.status ?? 502 },
+      );
+    }
+
     return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
-};
+}

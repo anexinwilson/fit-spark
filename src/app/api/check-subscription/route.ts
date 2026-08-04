@@ -1,21 +1,18 @@
+import { getAuthenticatedUserId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-// Checks if a user has an active subscription based on their userId.
-// Expects userId as a query parameter. Returns { subscriptionActive }.
-export const GET = async (request: NextRequest) => {
+// Checks the authenticated user's active subscription.
+export const GET = async () => {
   try {
-    // Extracts userId from the request's query parameters.
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
+    const userId = await getAuthenticatedUserId();
 
-    // Responds with an error if no userId is provided.
     if (!userId) {
-      return NextResponse.json({ error: "Missing User Id" }, { status: 500 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Retrieves only the subscriptionActive field from the user's profile.
-    const profile = await prisma?.profile.findUnique({
+    const profile = await prisma.profile.findUnique({
       where: { userId },
       select: { subscriptionActive: true },
     });

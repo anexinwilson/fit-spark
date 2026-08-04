@@ -1,68 +1,51 @@
-// https://mui.com/material-ui/integrations/nextjs/
-// https://clerk.com/docs/quickstarts/nextjs
-
-import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";
-import { Roboto } from "next/font/google";
-import { ThemeProvider } from "@mui/material/styles";
-import theme from "./theme";
-import "./globals.css";
-import NavBar from "@/components/navbar";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Geist } from "next/font/google";
+
+import NavBar from "@/components/navbar";
 import { ReactQueryClientProvider } from "@/components/react-query-client-provider";
+import { Toaster } from "@/components/ui/sonner";
 
-/**
- * Loads the Roboto font for the UI, with multiple weights.
- */
-const roboto = Roboto({
-  weight: ["300", "400", "500", "700"],
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-roboto",
-});
+import "./globals.css";
 
-/**
- * Loads Geist fonts for branding/typography.
- */
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+export const metadata: Metadata = {
+  title: "FitSpark | Always know what to do next",
+  description:
+    "A beginner-friendly workout coach that turns your goals, schedule, and available equipment into a clear plan.",
+};
 
-/**
- * Root layout for the app. Sets up all global providers:
- * - Clerk (authentication)
- * - React Query
- * - MUI theming and styling
- * - NavBar and CSS baseline
- */
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        className={`${roboto.variable} ${geistSans.variable} ${geistMono.variable}`}
-      >
-        <body className="antialiased">
+    <html lang="en" className={geist.variable}>
+      <body className="bg-background text-foreground min-h-screen font-sans antialiased">
+        <ClerkProvider
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          signUpForceRedirectUrl="/create-profile"
+          signInForceRedirectUrl="/auth/continue"
+        >
           <ReactQueryClientProvider>
-            <AppRouterCacheProvider options={{ enableCssLayer: true }}>
-              <ThemeProvider theme={theme}>
-                <NavBar />
-                {children}
-              </ThemeProvider>
-            </AppRouterCacheProvider>
+            <a
+              href="#main-content"
+              className="bg-background text-foreground sr-only z-50 rounded-md px-4 py-2 focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+            >
+              Skip to main content
+            </a>
+            <NavBar />
+            <main id="main-content">{children}</main>
+            <Toaster position="top-right" richColors />
           </ReactQueryClientProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

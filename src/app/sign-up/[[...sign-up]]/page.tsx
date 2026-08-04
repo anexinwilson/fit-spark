@@ -1,23 +1,9 @@
 import { SignUp } from "@clerk/nextjs";
-import { Box } from "@mui/material";
 
-/**
- * Renders a full-page sign-up form using Clerk's SignUp component.
- * Redirects new users to /create-profile upon successful sign-up.
- */
-const SignUpPage = () => {
+export default function SignUpPage() {
   return (
-    <Box
-      sx={{
-        height: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <SignUp signInFallbackRedirectUrl="/create-profile" />
-    </Box>
+    <section className="flex min-h-[calc(100svh-4rem)] items-center justify-center bg-slate-50 px-4 py-10">
+      <SignUp />
+    </section>
   );
-};
-
-export default SignUpPage;
+}

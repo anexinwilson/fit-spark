@@ -3,8 +3,7 @@ import type { NextConfig } from "next";
 /** @type {import('next').NextConfig} */
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  output: 'standalone',
+  output: "standalone",
   images: {
     remotePatterns: [
       {
@@ -12,11 +11,8 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
         hostname: "img.clerk.com",
-      }
-    ]
-  },
-    eslint: {
-    ignoreDuringBuilds: true,   
+      },
+    ],
   },
 };
 

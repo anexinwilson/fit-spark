@@ -1,6 +1,7 @@
 project_id        = "your-gcp-project-id"
 region            = "us-central1"
-github_repository = "your-github-user/fit-spark"
+operator_email    = "your-google-account@example.com"
+billing_account_id = "000000-000000-000000"
 
 # Leave false for the first foundation-only apply.
 deploy_cloud_run = false

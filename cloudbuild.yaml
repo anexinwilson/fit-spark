@@ -1,0 +1,20 @@
+steps:
+  - id: Build production container
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${_NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - --tag
+      - ${_IMAGE_URI}
+      - .
+
+images:
+  - ${_IMAGE_URI}
+
+serviceAccount: projects/${PROJECT_ID}/serviceAccounts/fit-spark-build@${PROJECT_ID}.iam.gserviceaccount.com
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1200s

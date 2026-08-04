@@ -1,6 +1,7 @@
+import { requireServerEnvironment } from "@/lib/server-env";
+
 const GEMINI_API_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/models";
-const DEFAULT_GEMINI_MODEL = "gemini-flash-latest";
 
 interface GeminiPart {
   text?: string;
@@ -11,6 +12,7 @@ interface GeminiResponse {
     content?: {
       parts?: GeminiPart[];
     };
+    finishReason?: string;
   }>;
   error?: {
     message?: string;
@@ -18,7 +20,10 @@ interface GeminiResponse {
 }
 
 export class GeminiApiError extends Error {
-  constructor(message: string, readonly status?: number) {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
     super(message);
     this.name = "GeminiApiError";
   }
@@ -30,12 +35,8 @@ export class GeminiApiError extends Error {
  * routes do not depend on a vendor SDK.
  */
 export async function generateGeminiJson(prompt: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL ?? DEFAULT_GEMINI_MODEL;
-
-  if (!apiKey) {
-    throw new GeminiApiError("GEMINI_API_KEY is not configured.");
-  }
+  const apiKey = requireServerEnvironment("GEMINI_API_KEY");
+  const model = requireServerEnvironment("GEMINI_MODEL");
 
   const response = await fetch(
     `${GEMINI_API_BASE_URL}/${encodeURIComponent(model)}:generateContent`,
@@ -48,12 +49,14 @@ export async function generateGeminiJson(prompt: string): Promise<string> {
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
-          maxOutputTokens: 1500,
+          // Gemini reasoning tokens count against this limit. Keep enough room
+          // for both the model's reasoning and the complete workout JSON.
+          maxOutputTokens: 4096,
           responseMimeType: "application/json",
         },
       }),
       signal: AbortSignal.timeout(30_000),
-    }
+    },
   );
 
   const body = (await response.json()) as GeminiResponse;
@@ -61,11 +64,20 @@ export async function generateGeminiJson(prompt: string): Promise<string> {
   if (!response.ok) {
     throw new GeminiApiError(
       body.error?.message ?? "Gemini request failed.",
-      response.status
+      response.status,
     );
   }
 
-  const content = body.candidates?.[0]?.content?.parts
+  const candidate = body.candidates?.[0];
+
+  if (candidate?.finishReason === "MAX_TOKENS") {
+    throw new GeminiApiError(
+      "Gemini reached its output limit before returning a complete JSON response.",
+      502,
+    );
+  }
+
+  const content = candidate?.content?.parts
     ?.map((part) => part.text ?? "")
     .join("")
     .trim();

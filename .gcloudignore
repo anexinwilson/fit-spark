@@ -1,0 +1,14 @@
+.gcloudignore
+.git
+.github
+.next
+coverage
+node_modules
+scratch
+tests
+__tests__
+.env*
+*.tfstate
+*.tfstate.*
+infra/terraform/.terraform
+npm-debug.log*

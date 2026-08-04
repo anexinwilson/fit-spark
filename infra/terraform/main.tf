@@ -1,10 +1,14 @@
 locals {
   required_apis = toset([
     "artifactregistry.googleapis.com",
-    "iamcredentials.googleapis.com",
+    "billingbudgets.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
-    "sts.googleapis.com",
+    "storage.googleapis.com",
   ])
 
   runtime_secrets = {
@@ -29,6 +33,40 @@ data "google_project" "current" {
   project_id = var.project_id
 }
 
+resource "google_billing_budget" "project_alert" {
+  billing_account = var.billing_account_id
+  display_name    = "Fit Spark monthly cost alert"
+
+  budget_filter {
+    projects        = ["projects/${data.google_project.current.number}"]
+    calendar_period = "MONTH"
+  }
+
+  amount {
+    specified_amount {
+      units = "1"
+    }
+  }
+
+  threshold_rules {
+    threshold_percent = 0.25
+  }
+
+  threshold_rules {
+    threshold_percent = 0.5
+  }
+
+  threshold_rules {
+    threshold_percent = 0.75
+  }
+
+  threshold_rules {
+    threshold_percent = 1
+  }
+
+  depends_on = [google_project_service.required]
+}
+
 resource "google_project_service" "required" {
   for_each = local.required_apis
 
@@ -51,7 +89,7 @@ resource "google_artifact_registry_repository" "app" {
     action = "DELETE"
     condition {
       tag_state  = "ANY"
-      older_than = "2592000s"
+      older_than = "604800s"
     }
   }
 
@@ -59,7 +97,7 @@ resource "google_artifact_registry_repository" "app" {
     id     = "keep-recent-images"
     action = "KEEP"
     most_recent_versions {
-      keep_count = 10
+      keep_count = 2
     }
   }
 
@@ -72,10 +110,31 @@ resource "google_service_account" "runtime" {
   display_name = "Fit Spark Cloud Run runtime"
 }
 
-resource "google_service_account" "github_deployer" {
+resource "google_service_account" "build" {
   project      = var.project_id
-  account_id   = "fit-spark-github"
-  display_name = "Fit Spark GitHub Actions deployer"
+  account_id   = "fit-spark-build"
+  display_name = "Fit Spark manual Cloud Build"
+}
+
+resource "google_storage_bucket" "build_source" {
+  project                     = var.project_id
+  name                        = "${var.project_id}-fit-spark-build-source"
+  location                    = var.region
+  storage_class               = "STANDARD"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = true
+
+  lifecycle_rule {
+    action {
+      type = "Delete"
+    }
+    condition {
+      age = 1
+    }
+  }
+
+  depends_on = [google_project_service.required]
 }
 
 resource "google_secret_manager_secret" "runtime" {
@@ -100,59 +159,42 @@ resource "google_secret_manager_secret_iam_member" "runtime_access" {
   member    = "serviceAccount:${google_service_account.runtime.email}"
 }
 
-resource "google_artifact_registry_repository_iam_member" "github_writer" {
+resource "google_artifact_registry_repository_iam_member" "build_writer" {
   project    = var.project_id
   location   = google_artifact_registry_repository.app.location
   repository = google_artifact_registry_repository.app.name
   role       = "roles/artifactregistry.writer"
-  member     = "serviceAccount:${google_service_account.github_deployer.email}"
+  member     = "serviceAccount:${google_service_account.build.email}"
 }
 
-resource "google_project_iam_member" "github_cloud_run_admin" {
+resource "google_project_iam_member" "build_log_writer" {
   project = var.project_id
-  role    = "roles/run.admin"
-  member  = "serviceAccount:${google_service_account.github_deployer.email}"
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.build.email}"
 }
 
-resource "google_service_account_iam_member" "github_uses_runtime_identity" {
-  service_account_id = google_service_account.runtime.name
+resource "google_storage_bucket_iam_member" "build_source_reader" {
+  bucket = google_storage_bucket.build_source.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.build.email}"
+}
+
+resource "google_storage_bucket_iam_member" "operator_source_writer" {
+  bucket = google_storage_bucket.build_source.name
+  role   = "roles/storage.objectCreator"
+  member = "user:${var.operator_email}"
+}
+
+resource "google_service_account_iam_member" "operator_uses_build_identity" {
+  service_account_id = google_service_account.build.name
   role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.github_deployer.email}"
+  member             = "user:${var.operator_email}"
 }
 
-resource "google_iam_workload_identity_pool" "github" {
-  project                   = var.project_id
-  workload_identity_pool_id = "fit-spark-github"
-  display_name              = "Fit Spark GitHub"
-  description               = "Keyless identity for the Fit Spark GitHub Actions workflow"
-
-  depends_on = [google_project_service.required]
-}
-
-resource "google_iam_workload_identity_pool_provider" "github" {
-  project                            = var.project_id
-  workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
-  workload_identity_pool_provider_id = "github"
-  display_name                       = "GitHub Actions"
-
-  attribute_mapping = {
-    "google.subject"             = "assertion.sub"
-    "attribute.actor"            = "assertion.actor"
-    "attribute.repository"       = "assertion.repository"
-    "attribute.repository_owner" = "assertion.repository_owner"
-  }
-
-  attribute_condition = "assertion.repository == '${var.github_repository}'"
-
-  oidc {
-    issuer_uri = "https://token.actions.githubusercontent.com"
-  }
-}
-
-resource "google_service_account_iam_member" "github_workload_identity" {
-  service_account_id = google_service_account.github_deployer.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repository}"
+resource "google_project_iam_member" "operator_build_editor" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.editor"
+  member  = "user:${var.operator_email}"
 }
 
 resource "google_cloud_run_v2_service" "app" {
@@ -182,7 +224,7 @@ resource "google_cloud_run_v2_service" "app" {
           memory = "512Mi"
         }
         cpu_idle          = true
-        startup_cpu_boost = true
+        startup_cpu_boost = false
       }
 
       ports {

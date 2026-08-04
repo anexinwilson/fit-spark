@@ -1,61 +1,85 @@
-"use client"
+"use client";
 
 import { useUser } from "@clerk/nextjs";
 import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 
-type ApiResponse = {
-  message: string;
-  error?: string;
-};
+import { Button } from "@/components/ui/button";
 
-/**
- * Sends a POST request to create a user profile.
- * Returns the response JSON.
- */
-const createProfileRequest = async () => {
-  const response = await fetch("/api/create-profile", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  const data = await response.json();
-  return data as ApiResponse;
+type ApiResponse = { message?: string; error?: string };
+
+async function createProfileRequest() {
+  const response = await fetch("/api/create-profile", { method: "POST" });
+  const data = (await response.json()) as ApiResponse;
+
+  if (!response.ok) {
+    throw new Error(data.error ?? "Unable to finish setting up your profile");
+  }
+
+  return data;
 }
 
-/**
- * React component that attempts to create a user profile
- * immediately upon mount (if signed in).
- * On success, redirects to /subscribe.
- */
-const CreateProfile = () => {
+export default function CreateProfilePage() {
+  const attempted = useRef(false);
   const { isLoaded, isSignedIn } = useUser();
-  const router = useRouter()
-  const { mutate, isPending } = useMutation<ApiResponse, Error>({
+  const creation = useMutation({
     mutationFn: createProfileRequest,
-    onSuccess: () => {
-      // On success, route the user to the subscription page.
-      router.push("/subscribe")
-    },
-    onError: (error) => {
-      // Logs error to the browser console (for debugging).
-      console.log(error);
-    },
+    onSuccess: () => window.location.replace("/auth/continue"),
   });
 
   useEffect(() => {
-    // Runs profile creation once user is loaded and authenticated.
-    if (isLoaded && isSignedIn && !isPending) {
-      mutate();
+    if (isLoaded && isSignedIn && !attempted.current) {
+      attempted.current = true;
+      creation.mutate();
     }
-  }, [isLoaded, isPending, isSignedIn, mutate]);
+  }, [creation, isLoaded, isSignedIn]);
+
+  if (isLoaded && !isSignedIn) {
+    window.location.replace("/sign-up");
+    return null;
+  }
+
   return (
-    <>
-      <div>Processing sign in</div>
-    </>
+    <section className="flex min-h-[calc(100svh-4rem)] items-center justify-center bg-slate-50 px-4 py-12">
+      <div className="bg-card w-full max-w-md rounded-xl border p-8 text-center shadow-sm">
+        {creation.isError ? (
+          <>
+            <AlertCircle
+              className="mx-auto size-10 text-red-600"
+              aria-hidden="true"
+            />
+            <h1 className="mt-4 text-xl font-semibold">
+              Setup needs another try
+            </h1>
+            <p role="alert" className="text-muted-foreground mt-2 text-sm">
+              {creation.error.message}
+            </p>
+            <Button
+              className="mt-6"
+              onClick={() => {
+                attempted.current = true;
+                creation.mutate();
+              }}
+            >
+              Try again
+            </Button>
+          </>
+        ) : (
+          <>
+            <Loader2
+              className="mx-auto size-10 animate-spin text-blue-600"
+              aria-hidden="true"
+            />
+            <h1 className="mt-4 text-xl font-semibold">
+              Setting up your profile
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm">
+              This should only take a moment.
+            </p>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
-
-export default CreateProfile;

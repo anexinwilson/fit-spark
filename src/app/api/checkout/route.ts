@@ -1,4 +1,6 @@
-import { getPriceIDFromType } from "@/lib/plans";
+import { getPriceId, isPlanInterval } from "@/features/billing/plans";
+import { getAuthenticatedUser } from "@/lib/auth";
+import { requireServerEnvironment } from "@/lib/server-env";
 import { getStripeClient } from "@/lib/stripe";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -6,28 +8,30 @@ import { NextRequest, NextResponse } from "next/server";
 // Requires planType, userId, and email in the request body.
 export const POST = async (request: NextRequest) => {
   try {
-    // Extracts subscription plan type, user ID, and email from the request.
-    const { planType, userId, email } = await request.json();
+    const user = await getAuthenticatedUser();
 
-    // Validates that all required fields are present.
-    if (!planType || !userId || !email) {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { planType } = await request.json();
+    const email = user.emailAddresses[0]?.emailAddress;
+
+    if (!planType || !email) {
       return NextResponse.json(
-        { error: "Plan type, user id, and email are required" },
-        { status: 400 }
+        { error: "Plan type and account email are required" },
+        { status: 400 },
       );
     }
 
     // Validates allowed plan types.
-    const allowedPlanTypes = ["week", "month", "year"];
-    if (!allowedPlanTypes.includes(planType)) {
+    if (!isPlanInterval(planType)) {
       return NextResponse.json({ error: "Invalid plan type" }, { status: 400 });
     }
 
     // Retrieves the Stripe price ID for the chosen plan.
-    const priceID = getPriceIDFromType(planType);
-    if (!priceID) {
-      return NextResponse.json({ error: "Invalid price id" }, { status: 400 });
-    }
+    const priceID = getPriceId(planType);
+    const baseUrl = requireServerEnvironment("NEXT_PUBLIC_BASE_URL");
 
     // Creates a Stripe Checkout session for a subscription.
     const stripe = getStripeClient();
@@ -42,9 +46,9 @@ export const POST = async (request: NextRequest) => {
       customer_email: email,
       mode: "subscription",
       // Stores user and plan info in Stripe metadata for later webhook processing.
-      metadata: { clerkUserId: userId, planType },
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/workoutplan?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/subscribe`,
+      metadata: { clerkUserId: user.id, planType },
+      success_url: `${baseUrl}/workoutplan?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/subscribe`,
     });
 
     // Returns the Stripe Checkout session URL for client-side redirection.
