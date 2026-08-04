@@ -1,6 +1,19 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
+import { requireRuntimeConfigValue } from "@/lib/runtime-config";
 
-export default clerkMiddleware();
+process.env.CLERK_ENCRYPTION_KEY = requireRuntimeConfigValue(
+  "CLERK_ENCRYPTION_KEY",
+);
+
+export default clerkMiddleware(
+  () => undefined,
+  () => ({
+    publishableKey: requireRuntimeConfigValue(
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+    ),
+    secretKey: requireRuntimeConfigValue("CLERK_SECRET_KEY"),
+  }),
+);
 
 export const config = {
   matcher: [

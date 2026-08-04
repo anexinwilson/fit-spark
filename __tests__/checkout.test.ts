@@ -15,11 +15,6 @@ jest.mock("@/lib/auth", () => ({
 import { createRequest, readResponse } from "./test-utils";
 
 describe("checkout", () => {
-  beforeAll(() => {
-    process.env.NEXT_PUBLIC_BASE_URL = "http://test.local";
-    process.env.STRIPE_PRICE_MONTHLY = "price_month";
-  });
-
   it("returns 400 for an unsupported plan", async () => {
     const { POST } = await import("@/app/api/checkout/route");
     const response = await POST(

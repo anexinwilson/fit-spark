@@ -16,7 +16,7 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL
     ? undefined
     : {
-        command: "npm run dev -- --hostname localhost",
+        command: "node scripts/start-local.mjs",
         url: "http://localhost:3000",
         reuseExistingServer: false,
         timeout: 120_000,

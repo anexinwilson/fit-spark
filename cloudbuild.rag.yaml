@@ -1,8 +1,10 @@
 steps:
-  - id: Build production container
+  - id: Build RAG ingestion image
     name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --file
+      - Dockerfile.rag
       - --tag
       - ${_IMAGE_URI}
       - .

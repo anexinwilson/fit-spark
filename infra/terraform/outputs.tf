@@ -22,3 +22,13 @@ output "cloud_run_url" {
   description = "Cloud Run URL after deploy_cloud_run is enabled."
   value       = var.deploy_cloud_run ? google_cloud_run_v2_service.app[0].uri : null
 }
+
+output "rag_job_name" {
+  description = "On-demand Cloud Run Job used to rebuild the Pinecone exercise namespace."
+  value       = var.enable_rag_job ? google_cloud_run_v2_job.rag_ingestion[0].name : null
+}
+
+output "rag_image_bucket" {
+  description = "Public GCS bucket serving the exercise catalog images."
+  value       = google_storage_bucket.rag_images.name
+}

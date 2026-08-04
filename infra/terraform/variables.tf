@@ -59,32 +59,20 @@ variable "allow_public_access" {
   default     = true
 }
 
-variable "clerk_publishable_key" {
-  description = "Public Clerk publishable key."
+variable "enable_rag_job" {
+  description = "Create the on-demand Cloud Run Job used for Pinecone exercise ingestion."
+  type        = bool
+  default     = false
+}
+
+variable "rag_image" {
+  description = "Full Artifact Registry image URL for the RAG ingestion job."
   type        = string
   default     = ""
 }
 
-variable "stripe_price_weekly" {
-  description = "Public Stripe weekly price ID."
+variable "rag_image_bucket_suffix" {
+  description = "Suffix for the public GCS bucket that serves catalog images."
   type        = string
-  default     = ""
-}
-
-variable "stripe_price_monthly" {
-  description = "Public Stripe monthly price ID."
-  type        = string
-  default     = ""
-}
-
-variable "stripe_price_yearly" {
-  description = "Public Stripe yearly price ID."
-  type        = string
-  default     = ""
-}
-
-variable "next_public_base_url" {
-  description = "Public production URL used in Stripe redirects."
-  type        = string
-  default     = ""
+  default     = "fit-spark-rag-images"
 }

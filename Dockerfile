@@ -14,11 +14,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Pass public environment variables for Next.js build
-ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-RUN test -n "$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || (echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is required" >&2; exit 1)
-ENV NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-
 # Prisma only validates the URL and generates code during this stage; it does
 # not connect to this placeholder database.
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/fit_spark"

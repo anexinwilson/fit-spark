@@ -1,15 +1,16 @@
-project_id        = "your-gcp-project-id"
-region            = "us-central1"
-operator_email    = "your-google-account@example.com"
+project_id         = "your-gcp-project-id"
+region             = "us-central1"
+operator_email     = "your-google-account@example.com"
 billing_account_id = "000000-000000-000000"
 
-# Leave false for the first foundation-only apply.
-deploy_cloud_run = false
-container_image  = ""
+# The application image must exist before enabling the Cloud Run service.
+deploy_cloud_run    = false
+container_image     = ""
 
-# Add these before enabling deploy_cloud_run.
-clerk_publishable_key = "pk_test_..."
-stripe_price_weekly   = "price_..."
-stripe_price_monthly  = "price_..."
-stripe_price_yearly   = "price_..."
-next_public_base_url  = "https://your-cloud-run-or-custom-domain"
+# The application and RAG job read one JSON value from the Secret Manager
+# secret named fitspark-runtime-config. Create that secret before deploying.
+enable_rag_job = false
+rag_image      = ""
+
+# When enable_rag_job is true, build Dockerfile.rag and set rag_image to its
+# Artifact Registry image. The job creates the GCS image bucket automatically.

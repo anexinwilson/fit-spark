@@ -12,20 +12,8 @@ locals {
   ])
 
   runtime_secrets = {
-    GEMINI_API_KEY        = "gemini-api-key"
-    CLERK_SECRET_KEY      = "clerk-secret-key"
-    STRIPE_SECRET_KEY     = "stripe-secret-key"
-    STRIPE_WEBHOOK_SECRET = "stripe-webhook-secret"
-    DATABASE_URL          = "database-url"
-  }
-
-  public_environment = {
-    GEMINI_MODEL                      = "gemini-flash-latest"
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = var.clerk_publishable_key
-    NEXT_PUBLIC_BASE_URL              = var.next_public_base_url
-    STRIPE_PRICE_WEEKLY               = var.stripe_price_weekly
-    STRIPE_PRICE_MONTHLY              = var.stripe_price_monthly
-    STRIPE_PRICE_YEARLY               = var.stripe_price_yearly
+    FITSPARK_RUNTIME_CONFIG_JSON = "fitspark-runtime-config"
+    CLERK_ENCRYPTION_KEY         = "clerk-encryption-key"
   }
 }
 
@@ -137,6 +125,30 @@ resource "google_storage_bucket" "build_source" {
   depends_on = [google_project_service.required]
 }
 
+resource "google_storage_bucket" "rag_images" {
+  project                     = var.project_id
+  name                        = "${var.project_id}-${var.rag_image_bucket_suffix}"
+  location                    = var.region
+  storage_class               = "STANDARD"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "inherited"
+  force_destroy               = true
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_storage_bucket_iam_member" "rag_images_public_reader" {
+  bucket = google_storage_bucket.rag_images.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}
+
+resource "google_storage_bucket_iam_member" "rag_images_runtime_writer" {
+  bucket = google_storage_bucket.rag_images.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.runtime.email}"
+}
+
 resource "google_secret_manager_secret" "runtime" {
   for_each = local.runtime_secrets
 
@@ -232,14 +244,6 @@ resource "google_cloud_run_v2_service" "app" {
       }
 
       dynamic "env" {
-        for_each = local.public_environment
-        content {
-          name  = env.key
-          value = env.value
-        }
-      }
-
-      dynamic "env" {
         for_each = local.runtime_secrets
         content {
           name = env.key
@@ -285,4 +289,51 @@ resource "google_cloud_run_v2_service_iam_member" "public" {
   name     = google_cloud_run_v2_service.app[0].name
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+resource "google_cloud_run_v2_job" "rag_ingestion" {
+  count = var.enable_rag_job ? 1 : 0
+
+  project  = var.project_id
+  name     = "fit-spark-rag-indexer"
+  location = var.region
+
+  template {
+    template {
+      service_account = google_service_account.runtime.email
+      max_retries     = 1
+      timeout         = "1800s"
+
+      containers {
+        image = var.rag_image
+
+        env {
+          name = "FITSPARK_RUNTIME_CONFIG_JSON"
+          value_source {
+            secret_key_ref {
+              secret  = google_secret_manager_secret.runtime["FITSPARK_RUNTIME_CONFIG_JSON"].secret_id
+              version = "latest"
+            }
+          }
+        }
+
+        env {
+          name  = "FITSPARK_RAG_IMAGE_BUCKET"
+          value = google_storage_bucket.rag_images.name
+        }
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.rag_image != ""
+      error_message = "rag_image is required when enable_rag_job is true."
+    }
+  }
+
+  depends_on = [
+    google_secret_manager_secret_iam_member.runtime_access,
+    google_storage_bucket_iam_member.rag_images_runtime_writer,
+  ]
 }

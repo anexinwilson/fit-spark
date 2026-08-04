@@ -5,6 +5,7 @@ import { Geist } from "next/font/google";
 import NavBar from "@/components/navbar";
 import { ReactQueryClientProvider } from "@/components/react-query-client-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { requireRuntimeConfigValue } from "@/lib/runtime-config";
 
 import "./globals.css";
 
@@ -19,6 +20,8 @@ export const metadata: Metadata = {
     "A beginner-friendly workout coach that turns your goals, schedule, and available equipment into a clear plan.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,6 +31,9 @@ export default function RootLayout({
     <html lang="en" className={geist.variable}>
       <body className="bg-background text-foreground min-h-screen font-sans antialiased">
         <ClerkProvider
+          publishableKey={requireRuntimeConfigValue(
+            "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+          )}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
           signUpForceRedirectUrl="/create-profile"

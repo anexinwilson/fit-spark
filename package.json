@@ -15,7 +15,9 @@
     "test:e2e:report": "playwright show-report",
     "prisma:generate": "prisma generate",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "rag:test": "node --test scripts/rag/ingest-exercises.test.mjs",
+    "rag:ingest": "node scripts/rag/ingest-exercises.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

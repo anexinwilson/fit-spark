@@ -1,4 +1,5 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { auth, createClerkClient } from "@clerk/nextjs/server";
+import { requireRuntimeConfigValue } from "@/lib/runtime-config";
 
 export async function getAuthenticatedUserId() {
   const { userId } = await auth();
@@ -12,6 +13,8 @@ export async function getAuthenticatedUser() {
     return null;
   }
 
-  const client = await clerkClient();
+  const client = createClerkClient({
+    secretKey: requireRuntimeConfigValue("CLERK_SECRET_KEY"),
+  });
   return client.users.getUser(userId);
 }
