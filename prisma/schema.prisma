@@ -23,10 +23,84 @@ model Profile {
   cancelAtPeriodEnd    Boolean  @default(false)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+  experienceLevel      String?  @default("beginner")
 }
 
 model StripeEvent {
   id          String   @id
   type        String
   processedAt DateTime @default(now())
+}
+
+model WorkoutSession {
+  id              String        @id @default(uuid())
+  userId          String
+  name            String
+  durationMinutes Int?
+  completedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  exercises       ExerciseLog[]
+
+  @@index([userId])
+}
+
+model ExerciseLog {
+  id                 String         @id @default(uuid())
+  workoutSessionId   String
+  pineconeExerciseId String
+  order              Int
+  stickyNote         String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  workoutSession     WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  sets               SetLog[]
+
+  @@index([workoutSessionId])
+  @@index([pineconeExerciseId])
+}
+
+model SetLog {
+  id            String      @id @default(uuid())
+  exerciseLogId String
+  setNumber     Int
+  weightLbs     Float?
+  reps          Int?
+  rpe           Float?
+  completed     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  exerciseLog   ExerciseLog @relation(fields: [exerciseLogId], references: [id], onDelete: Cascade)
+
+  @@index([exerciseLogId])
+}
+
+model UserEquipmentInventory {
+  id             String   @id @default(uuid())
+  userId         String
+  equipmentAlias String
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, equipmentAlias])
+  @@index([userId])
+}
+
+model MuscleFatigueLog {
+  id            String   @id @default(uuid())
+  userId        String
+  muscle        String
+  lastTrainedAt DateTime @default(now())
+
+  @@unique([userId, muscle])
+  @@index([userId])
+}
+
+model HealthProfile {
+  id                String   @id @default(uuid())
+  userId            String
+  injuryDescription String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
 }
