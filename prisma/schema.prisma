@@ -26,6 +26,27 @@ model Profile {
   experienceLevel      String?  @default("beginner")
 }
 
+model WorkoutPlan {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  plan      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model WorkoutPlanDraft {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  step      Int      @default(0)
+  input     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
 model StripeEvent {
   id          String   @id
   type        String

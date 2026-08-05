@@ -14,6 +14,9 @@ jest.mock("@/lib/prisma", () => ({
     profile: {
       findUnique: jest.fn().mockResolvedValue({ subscriptionActive: true }),
     },
+    workoutPlan: {
+      upsert: jest.fn(),
+    },
   },
 }));
 import { generateGeminiJson } from "@/lib/ai/gemini";

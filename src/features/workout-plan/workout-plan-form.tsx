@@ -1,25 +1,18 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Loader2, Sparkles } from "lucide-react";
-import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, ArrowRight, Check, Loader2, Plus, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { getUserEquipment } from "@/features/equipment/actions";
 import {
+  type WorkoutPlanDraft,
   type WorkoutPlanInput,
   type WorkoutPlanResponse,
   workoutPlanSchema,
@@ -27,19 +20,15 @@ import {
 import { WorkoutPlanResult } from "@/features/workout-plan/workout-plan-result";
 import { cn } from "@/lib/utils";
 
-const steps = ["Goal", "Schedule", "Equipment & safety"] as const;
+const steps = ["Your goal", "Your experience", "Equipment & safety"] as const;
 
-const stepFields: Array<Array<keyof WorkoutPlanInput>> = [
-  ["workoutType", "fitnessGoal"],
-  [
-    "experienceLevel",
-    "preferredDuration",
-    "daysPerWeek",
-    "ageRange",
-    "includeCardio",
-  ],
-  ["equipment", "limitations"],
-];
+const limitationOptions = [
+  "Knee or leg discomfort",
+  "Back discomfort",
+  "Shoulder or arm discomfort",
+  "Avoid jumping or high-impact movement",
+  "Avoid overhead movement",
+] as const;
 
 async function generateWorkoutPlan(
   input: WorkoutPlanInput,
@@ -50,317 +39,727 @@ async function generateWorkoutPlan(
     body: JSON.stringify(input),
   });
   const data = (await response.json()) as WorkoutPlanResponse;
-
   if (!response.ok) {
     throw new Error(data.error ?? "Unable to create your workout plan");
   }
-
   return data;
 }
 
-type Choice = { value: string; label: string };
+type SavedDraft = WorkoutPlanDraft & { updatedAt: string };
 
-function FormSelect({
-  id,
+async function getWorkoutPlanDraft(): Promise<{ draft: SavedDraft | null }> {
+  const response = await fetch("/api/workout-plan/draft");
+  const data = (await response.json()) as {
+    draft?: SavedDraft | null;
+    error?: string;
+  };
+  if (!response.ok) {
+    throw new Error(data.error ?? "Unable to load your planning draft");
+  }
+  return { draft: data.draft ?? null };
+}
+
+async function saveWorkoutPlanDraft(
+  draft: WorkoutPlanDraft,
+): Promise<{ draft: SavedDraft }> {
+  const response = await fetch("/api/workout-plan/draft", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(draft),
+  });
+  const data = (await response.json()) as {
+    draft?: SavedDraft;
+    error?: string;
+  };
+  if (!response.ok || !data.draft) {
+    throw new Error(data.error ?? "Unable to save your planning progress");
+  }
+  return { draft: data.draft };
+}
+
+async function deleteWorkoutPlanDraft(): Promise<void> {
+  const response = await fetch("/api/workout-plan/draft", { method: "DELETE" });
+  if (!response.ok) {
+    const data = (await response.json()) as { error?: string };
+    throw new Error(data.error ?? "Unable to clear your planning draft");
+  }
+}
+
+function ChoiceCard({
   label,
-  value,
-  onValueChange,
-  placeholder,
-  choices,
-  error,
+  description,
+  selected,
+  onClick,
 }: {
-  id: string;
   label: string;
-  value: string;
-  onValueChange: (value: string) => void;
-  placeholder: string;
-  choices: Choice[];
-  error?: string;
+  description?: string;
+  selected: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Select value={value} onValueChange={(next) => onValueChange(next ?? "")}>
-        <SelectTrigger
-          id={id}
-          className="h-11 w-full"
-          aria-invalid={Boolean(error)}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "group flex w-full items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]",
+        selected
+          ? "border-blue-600 bg-blue-50 shadow-md dark:border-blue-400 dark:bg-blue-950/40"
+          : "border-slate-200 bg-white hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900/60",
+      )}
+    >
+      <span>
+        <span
+          className={cn(
+            "block text-sm font-semibold",
+            selected
+              ? "text-blue-800 dark:text-blue-200"
+              : "text-slate-800 dark:text-slate-100",
+          )}
         >
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
-        <SelectContent>
-          {choices.map((choice) => (
-            <SelectItem key={choice.value} value={choice.value}>
-              {choice.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      {error && <p className="text-destructive text-sm">{error}</p>}
-    </div>
+          {label}
+        </span>
+        {description && (
+          <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+            {description}
+          </span>
+        )}
+      </span>
+      <span
+        className={cn(
+          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
+          selected
+            ? "border-blue-600 bg-blue-600 text-white"
+            : "border-slate-300 text-transparent dark:border-slate-600",
+        )}
+      >
+        <Check className="size-3.5" aria-hidden="true" />
+      </span>
+    </button>
   );
 }
 
-export function WorkoutPlanForm() {
-  const [step, setStep] = useState(0);
+function SmallChoice({
+  label,
+  selected,
+  onClick,
+}: {
+  label: string;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "rounded-xl border-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+        selected
+          ? "border-blue-600 bg-blue-600 text-white"
+          : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+export function WorkoutPlanForm({
+  initialPlan,
+}: {
+  initialPlan?: WorkoutPlanResponse["workoutPlan"];
+}) {
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const requestedStep = Number(searchParams.get("step"));
+  const [step, setStep] = useState(
+    Number.isInteger(requestedStep) &&
+      requestedStep >= 0 &&
+      requestedStep < steps.length
+      ? requestedStep
+      : 0,
+  );
+  const [activePlan, setActivePlan] = useState(initialPlan);
+  const [equipmentAliases, setEquipmentAliases] = useState<string[]>([]);
+  const [equipmentLoading, setEquipmentLoading] = useState(true);
+  const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(
+    null,
+  );
+  const [customLimitation, setCustomLimitation] = useState("");
+
   const form = useForm<WorkoutPlanInput>({
     resolver: zodResolver(workoutPlanSchema),
     defaultValues: {
-      workoutType: "",
+      workoutType: "strength",
       fitnessGoal: "",
       experienceLevel: "beginner",
-      preferredDuration: 30,
-      includeCardio: true,
+      preferredDuration: 45,
+      includeCardio: false,
       ageRange: "",
       equipment: "",
       limitations: "",
       daysPerWeek: 3,
     },
   });
-  const generation = useMutation({ mutationFn: generateWorkoutPlan });
+  const limitationValue =
+    useWatch({ control: form.control, name: "limitations" }) ?? "";
+  const preferredDuration =
+    useWatch({ control: form.control, name: "preferredDuration" }) ?? 45;
+  const selectedLimitations = limitationValue
+    .split("; ")
+    .filter((value) => value.length > 0);
 
-  const nextStep = async () => {
-    const valid = await form.trigger(stepFields[step], { shouldFocus: true });
-    if (valid) setStep((current) => Math.min(current + 1, steps.length - 1));
+  const draftQuery = useQuery({
+    queryKey: ["workout-plan-draft"],
+    queryFn: getWorkoutPlanDraft,
+    staleTime: 30_000,
+  });
+
+  const draftMutation = useMutation({
+    mutationFn: saveWorkoutPlanDraft,
+    onSuccess: (data) => {
+      queryClient.setQueryData(["workout-plan-draft"], data);
+    },
+  });
+
+  const clearDraftMutation = useMutation({
+    mutationFn: deleteWorkoutPlanDraft,
+    onSuccess: () => {
+      queryClient.setQueryData(["workout-plan-draft"], { draft: null });
+    },
+  });
+
+  useEffect(() => {
+    getUserEquipment()
+      .then((aliases) => {
+        setEquipmentAliases(aliases);
+        form.setValue("equipment", aliases.join(", "), {
+          shouldDirty: false,
+          shouldValidate: true,
+        });
+      })
+      .catch(() =>
+        setEquipmentLoadError(
+          "We could not load your selected equipment. Refresh and try again.",
+        ),
+      )
+      .finally(() => setEquipmentLoading(false));
+  }, [form]);
+
+  useEffect(() => {
+    const draft = draftQuery.data?.draft;
+    if (!draft) return;
+
+    form.reset({
+      workoutType: "strength",
+      preferredDuration: 45,
+      includeCardio: false,
+      ageRange: "",
+      equipment: "",
+      daysPerWeek: 3,
+      ...draft.input,
+    });
+    if (
+      !Number.isInteger(requestedStep) ||
+      requestedStep < 0 ||
+      requestedStep >= steps.length
+    ) {
+      queueMicrotask(() => setStep(draft.step));
+    }
+  }, [draftQuery.data?.draft, form, requestedStep]);
+
+  const generation = useMutation({
+    mutationFn: generateWorkoutPlan,
+    onSuccess: (response) => {
+      setActivePlan(response.workoutPlan);
+      void clearDraftMutation.mutateAsync();
+    },
+  });
+
+  const draftInput = (): WorkoutPlanDraft["input"] => {
+    const values = form.getValues();
+    return {
+      workoutType: values.workoutType,
+      fitnessGoal: values.fitnessGoal,
+      experienceLevel: values.experienceLevel,
+      preferredDuration: values.preferredDuration,
+      includeCardio: values.includeCardio,
+      ageRange: values.ageRange,
+      limitations: form.getValues("limitations"),
+      daysPerWeek: values.daysPerWeek,
+    };
   };
 
-  if (generation.data?.workoutPlan) {
+  const nextStep = async () => {
+    const fields = step === 0 ? ["fitnessGoal"] : ["experienceLevel"];
+    const valid = await form.trigger(fields as Array<keyof WorkoutPlanInput>, {
+      shouldFocus: true,
+    });
+    if (valid) {
+      const nextStep = Math.min(step + 1, steps.length - 1);
+      draftMutation.mutate(
+        { step: nextStep, input: draftInput() },
+        { onSuccess: () => setStep(nextStep) },
+      );
+    }
+  };
+
+  const toggleLimitation = (limitation: string) => {
+    const next = selectedLimitations.includes(limitation)
+      ? selectedLimitations.filter((item) => item !== limitation)
+      : [...selectedLimitations, limitation];
+    form.setValue("limitations", next.join("; "), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
+  const addCustomLimitation = () => {
+    const value = customLimitation.trim();
+    if (!value || selectedLimitations.includes(value)) return;
+    form.setValue("limitations", [...selectedLimitations, value].join("; "), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setCustomLimitation("");
+  };
+
+  const submitPlan = (input: WorkoutPlanInput) => {
+    if (equipmentAliases.length === 0) {
+      form.setError("equipment", {
+        message: "Choose at least one equipment item before building a plan.",
+      });
+      return;
+    }
+
+    generation.mutate({
+      ...input,
+      equipment: equipmentAliases.join(", "),
+      limitations: form.getValues("limitations"),
+    });
+  };
+
+  const continueToEquipment = () => {
+    draftMutation.mutate(
+      { step: 2, input: draftInput() },
+      {
+        onSuccess: () =>
+          window.location.assign("/explore?returnTo=workoutplan"),
+      },
+    );
+  };
+
+  const draftError =
+    draftQuery.error ?? draftMutation.error ?? clearDraftMutation.error;
+
+  if (activePlan) {
     return (
       <div className="space-y-6">
-        <WorkoutPlanResult plan={generation.data.workoutPlan} />
+        <WorkoutPlanResult plan={activePlan} />
         <Button
           variant="outline"
           onClick={() => {
             generation.reset();
+            setActivePlan(undefined);
             setStep(0);
           }}
         >
-          Adjust my answers
+          Build a new plan
         </Button>
       </div>
     );
   }
 
   return (
-    <Card className="overflow-hidden border-slate-200 shadow-sm">
-      <CardHeader className="border-b bg-slate-50">
-        <div className="flex items-center justify-between gap-4">
+    <Card className="overflow-hidden border-slate-200/80 shadow-xl shadow-blue-950/5 dark:border-slate-800">
+      <CardHeader className="border-b bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-6 sm:p-8 dark:from-blue-950/40 dark:via-slate-900 dark:to-cyan-950/30">
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-blue-700">
+            <p className="text-sm font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
               Step {step + 1} of {steps.length}
             </p>
-            <CardTitle className="mt-1 text-2xl">{steps[step]}</CardTitle>
+            <CardTitle className="mt-2 text-2xl tracking-tight sm:text-3xl">
+              {steps[step]}
+            </CardTitle>
+            <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-6">
+              Your answers and selected equipment will be used to build your
+              plan.
+            </p>
           </div>
-          <span className="text-muted-foreground text-sm">
+          <span className="rounded-full bg-white/80 px-3 py-1 text-sm font-semibold text-blue-700 shadow-sm dark:bg-slate-900/80 dark:text-blue-300">
             {Math.round(((step + 1) / steps.length) * 100)}%
           </span>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
+        <div className="mt-6 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-slate-700">
           <div
-            className="h-full rounded-full bg-blue-600 transition-[width] motion-reduce:transition-none"
+            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-[width] duration-500 motion-reduce:transition-none"
             style={{ width: `${((step + 1) / steps.length) * 100}%` }}
           />
         </div>
       </CardHeader>
+
       <CardContent className="p-6 sm:p-8">
-        <form onSubmit={form.handleSubmit((input) => generation.mutate(input))}>
+        <form onSubmit={form.handleSubmit(submitPlan)}>
           {step === 0 && (
-            <div className="grid gap-6 sm:grid-cols-2">
-              <Controller
-                control={form.control}
-                name="workoutType"
-                render={({ field, fieldState }) => (
-                  <FormSelect
-                    id="workout-type"
-                    label="What kind of training sounds right?"
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Choose a style"
-                    error={fieldState.error?.message}
-                    choices={[
-                      { value: "strength", label: "Strength and gym machines" },
-                      { value: "general fitness", label: "General fitness" },
-                      { value: "bodyweight", label: "Bodyweight training" },
-                      { value: "mixed", label: "A balanced mix" },
-                    ]}
-                  />
-                )}
-              />
-              <Controller
-                control={form.control}
-                name="fitnessGoal"
-                render={({ field, fieldState }) => (
-                  <FormSelect
-                    id="fitness-goal"
-                    label="What matters most right now?"
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Choose your goal"
-                    error={fieldState.error?.message}
-                    choices={[
-                      {
-                        value: "build confidence",
-                        label: "Feel confident at the gym",
-                      },
-                      { value: "build muscle", label: "Build muscle" },
-                      { value: "lose fat", label: "Lose fat" },
-                      {
-                        value: "improve health",
-                        label: "Improve health and energy",
-                      },
-                    ]}
-                  />
-                )}
-              />
-            </div>
+            <Controller
+              control={form.control}
+              name="fitnessGoal"
+              render={({ field, fieldState }) => (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      What do you want help with first?
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Choose the outcome that matters most right now.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      [
+                        "build confidence",
+                        "Build confidence",
+                        "Know what to do at the gym",
+                      ],
+                      [
+                        "build muscle",
+                        "Build muscle",
+                        "Get stronger over time",
+                      ],
+                      [
+                        "improve health",
+                        "Improve health",
+                        "Move more and feel better",
+                      ],
+                      [
+                        "lose fat",
+                        "Manage weight",
+                        "Build a consistent routine",
+                      ],
+                    ].map(([value, label, description]) => (
+                      <ChoiceCard
+                        key={value}
+                        label={label}
+                        description={description}
+                        selected={field.value === value}
+                        onClick={() => field.onChange(value)}
+                      />
+                    ))}
+                  </div>
+                  {fieldState.error && (
+                    <p className="text-destructive text-sm">
+                      {fieldState.error.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            />
           )}
 
           {step === 1 && (
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="space-y-8">
               <Controller
                 control={form.control}
                 name="experienceLevel"
-                render={({ field, fieldState }) => (
-                  <FormSelect
-                    id="experience-level"
-                    label="Gym experience"
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Choose your experience"
-                    error={fieldState.error?.message}
-                    choices={[
-                      { value: "beginner", label: "New or returning" },
-                      {
-                        value: "intermediate",
-                        label: "Comfortable with the basics",
-                      },
-                      { value: "advanced", label: "Experienced" },
-                    ]}
-                  />
-                )}
-              />
-              <Controller
-                control={form.control}
-                name="ageRange"
-                render={({ field, fieldState }) => (
-                  <FormSelect
-                    id="age-range"
-                    label="Age range"
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    placeholder="Choose an age range"
-                    error={fieldState.error?.message}
-                    choices={[
-                      { value: "18-29", label: "18–29" },
-                      { value: "30-44", label: "30–44" },
-                      { value: "45-59", label: "45–59" },
-                      { value: "60+", label: "60+" },
-                    ]}
-                  />
-                )}
-              />
-              <div className="space-y-2">
-                <Label htmlFor="duration">Minutes per workout</Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  min={15}
-                  max={90}
-                  step={5}
-                  className="h-11"
-                  {...form.register("preferredDuration", {
-                    valueAsNumber: true,
-                  })}
-                />
-                {form.formState.errors.preferredDuration && (
-                  <p className="text-destructive text-sm">
-                    Choose between 15 and 90 minutes
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="days-per-week">Workouts per week</Label>
-                <Input
-                  id="days-per-week"
-                  type="number"
-                  min={2}
-                  max={6}
-                  className="h-11"
-                  {...form.register("daysPerWeek", { valueAsNumber: true })}
-                />
-                {form.formState.errors.daysPerWeek && (
-                  <p className="text-destructive text-sm">Choose 2 to 6 days</p>
-                )}
-              </div>
-              <Controller
-                control={form.control}
-                name="includeCardio"
                 render={({ field }) => (
-                  <div className="flex items-start gap-3 rounded-lg border p-4 sm:col-span-2">
-                    <Checkbox
-                      id="include-cardio"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
+                  <div className="space-y-4">
                     <div>
-                      <Label htmlFor="include-cardio">
-                        Include gentle cardio
-                      </Label>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        Add optional cardio that fits the session length.
+                      <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        How familiar are you with workouts?
                       </p>
+                      <p className="text-muted-foreground mt-1 text-sm">
+                        This changes the starting pace and explanations.
+                      </p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {[
+                        ["beginner", "I am new", "Show me the basics"],
+                        [
+                          "intermediate",
+                          "Some experience",
+                          "I know the basics",
+                        ],
+                        ["advanced", "I train regularly", "Keep it efficient"],
+                      ].map(([value, label, description]) => (
+                        <ChoiceCard
+                          key={value}
+                          label={label}
+                          description={description}
+                          selected={field.value === value}
+                          onClick={() => field.onChange(value)}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}
               />
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Start with a simple schedule
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  You can change this when your week changes.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Controller
+                    control={form.control}
+                    name="daysPerWeek"
+                    render={({ field }) => (
+                      <>
+                        {[2, 3, 4].map((days) => (
+                          <SmallChoice
+                            key={days}
+                            label={`${days} days`}
+                            selected={field.value === days}
+                            onClick={() => field.onChange(days)}
+                          />
+                        ))}
+                      </>
+                    )}
+                  />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Controller
+                    control={form.control}
+                    name="preferredDuration"
+                    render={({ field }) => (
+                      <>
+                        {[30, 45, 60].map((minutes) => (
+                          <SmallChoice
+                            key={minutes}
+                            label={`${minutes} minutes`}
+                            selected={field.value === minutes}
+                            onClick={() => field.onChange(minutes)}
+                          />
+                        ))}
+                      </>
+                    )}
+                  />
+                </div>
+                <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-950/60">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Or set an exact visit length
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-end gap-3">
+                    <label className="grid gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                      Hours
+                      <input
+                        type="number"
+                        min={0}
+                        max={4}
+                        value={Math.floor(preferredDuration / 60)}
+                        onChange={(event) => {
+                          const hours = Number(event.target.value);
+                          const minutes = preferredDuration % 60;
+                          form.setValue(
+                            "preferredDuration",
+                            hours * 60 + minutes,
+                            {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
+                        className="h-10 w-24 rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-900"
+                      />
+                    </label>
+                    <label className="grid gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                      Minutes
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={preferredDuration % 60}
+                        onChange={(event) => {
+                          const minutes = Number(event.target.value);
+                          const hours = Math.floor(preferredDuration / 60);
+                          form.setValue(
+                            "preferredDuration",
+                            hours * 60 + minutes,
+                            {
+                              shouldDirty: true,
+                              shouldValidate: true,
+                            },
+                          );
+                        }}
+                        className="h-10 w-24 rounded-lg border border-slate-300 bg-white px-3 text-sm dark:border-slate-600 dark:bg-slate-900"
+                      />
+                    </label>
+                    <span className="pb-2 text-xs text-slate-500 dark:text-slate-400">
+                      {preferredDuration} minutes total
+                    </span>
+                  </div>
+                  {form.formState.errors.preferredDuration && (
+                    <p className="mt-2 text-xs text-red-700 dark:text-red-300">
+                      Choose between 15 minutes and 4 hours.
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
           {step === 2 && (
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="equipment">Equipment you can use</Label>
-                <Textarea
-                  id="equipment"
-                  rows={4}
-                  placeholder="Example: treadmill, adjustable dumbbells, and the assisted pull-up machine with a knee pad. I can also do bodyweight exercises."
-                  aria-invalid={Boolean(form.formState.errors.equipment)}
-                  {...form.register("equipment")}
-                />
-                <p className="text-muted-foreground text-sm">
-                  Plain descriptions are fine—you do not need to know machine
-                  names.
-                </p>
+            <div className="space-y-8">
+              <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-5 dark:border-blue-900 dark:bg-blue-950/30">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                      Equipment selected for your plan
+                    </p>
+                    <p className="mt-1 text-sm text-blue-800/80 dark:text-blue-200/80">
+                      FitSpark will use these items when planning your sessions.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 border-blue-300 bg-white dark:bg-slate-950"
+                    onClick={continueToEquipment}
+                    disabled={draftMutation.isPending}
+                  >
+                    <Plus className="size-4" aria-hidden="true" />
+                    Change equipment
+                  </Button>
+                </div>
+                {equipmentLoading ? (
+                  <p className="mt-4 text-sm text-blue-800/70 dark:text-blue-200/70">
+                    Loading your selected equipment...
+                  </p>
+                ) : equipmentLoadError ? (
+                  <p
+                    role="alert"
+                    className="mt-4 text-sm text-red-700 dark:text-red-300"
+                  >
+                    {equipmentLoadError}
+                  </p>
+                ) : equipmentAliases.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {equipmentAliases.map((alias) => (
+                      <span
+                        key={alias}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200"
+                      >
+                        <Check
+                          className="size-3.5 text-emerald-600"
+                          aria-hidden="true"
+                        />
+                        {alias}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-xl border border-dashed border-blue-300 bg-white/80 p-4 dark:border-blue-800 dark:bg-slate-950/50">
+                    <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      Choose equipment before building your plan
+                    </p>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                      Select the machines, weights, or tools you can use in
+                      Explore.
+                    </p>
+                    <Button
+                      type="button"
+                      className="mt-3 bg-blue-600 hover:bg-blue-700"
+                      onClick={continueToEquipment}
+                      disabled={draftMutation.isPending}
+                    >
+                      Choose equipment
+                    </Button>
+                  </div>
+                )}
                 {form.formState.errors.equipment && (
-                  <p className="text-destructive text-sm">
+                  <p className="mt-3 text-sm text-red-700 dark:text-red-300">
                     {form.formState.errors.equipment.message}
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="limitations">
-                  Pain, injuries, or movements to avoid
-                </Label>
-                <Textarea
-                  id="limitations"
-                  rows={4}
-                  placeholder="Example: my right knee gets sore with deep squats. Leave blank if none."
-                  {...form.register("limitations")}
-                />
-                <p className="text-muted-foreground text-sm">
-                  FitSpark can suggest gentler options but does not replace
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    Anything you want to avoid?
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Choose any that apply. You can add your own note below.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {limitationOptions.map((limitation) => {
+                    const selected = selectedLimitations.includes(limitation);
+                    return (
+                      <button
+                        key={limitation}
+                        type="button"
+                        onClick={() => toggleLimitation(limitation)}
+                        aria-pressed={selected}
+                        className={cn(
+                          "flex items-center justify-between rounded-xl border-2 px-4 py-3 text-left text-sm font-medium transition-colors",
+                          selected
+                            ? "border-blue-600 bg-blue-50 text-blue-800 dark:border-blue-400 dark:bg-blue-950/40 dark:text-blue-200"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-200",
+                        )}
+                      >
+                        {limitation}
+                        {selected && (
+                          <Check className="size-4" aria-hidden="true" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedLimitations.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedLimitations.map((limitation) => (
+                      <button
+                        key={limitation}
+                        type="button"
+                        onClick={() => toggleLimitation(limitation)}
+                        className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      >
+                        {limitation}
+                        <X className="size-3" aria-hidden="true" />
+                        <span className="sr-only">Remove</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Textarea
+                    id="custom-limitation"
+                    rows={2}
+                    value={customLimitation}
+                    onChange={(event) =>
+                      setCustomLimitation(event.target.value)
+                    }
+                    placeholder="Add another movement or health consideration"
+                    className="min-h-12 resize-none bg-white dark:bg-slate-900"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addCustomLimitation}
+                    className="gap-2 sm:self-end"
+                  >
+                    <Plus className="size-4" aria-hidden="true" />
+                    Add another
+                  </Button>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  This helps FitSpark avoid unsuitable movements. It is not
                   medical advice.
                 </p>
               </div>
             </div>
           )}
 
-          {generation.isError && (
+          {(draftError || generation.isError) && (
             <div
               role="alert"
-              className="mt-6 rounded-lg bg-red-50 p-4 text-sm text-red-800"
+              className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-300"
             >
-              {generation.error.message}
+              {draftError?.message ?? generation.error?.message}
             </div>
           )}
 
@@ -393,14 +792,16 @@ export function WorkoutPlanForm() {
               <Button
                 type="submit"
                 className="bg-blue-600 hover:bg-blue-700"
-                disabled={generation.isPending}
+                disabled={
+                  generation.isPending ||
+                  equipmentLoading ||
+                  Boolean(equipmentLoadError)
+                }
               >
-                {generation.isPending ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Sparkles />
-                )}
-                {generation.isPending ? "Building your plan" : "Build my plan"}
+                {generation.isPending && <Loader2 className="animate-spin" />}
+                {generation.isPending
+                  ? "Building your plan..."
+                  : "Build my plan"}
               </Button>
             )}
           </div>

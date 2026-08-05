@@ -3,9 +3,29 @@ steps:
     name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --cache-from
+      - ${_IMAGE_URI}
       - --tag
       - ${_IMAGE_URI}
       - .
+
+  - id: Push production container
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_IMAGE_URI}
+
+  - id: Deploy to Cloud Run
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    args:
+      - gcloud
+      - run
+      - deploy
+      - fit-spark
+      - --image=${_IMAGE_URI}
+      - --region=us-central1
+      - --project=${PROJECT_ID}
+      - --quiet
 
 images:
   - ${_IMAGE_URI}

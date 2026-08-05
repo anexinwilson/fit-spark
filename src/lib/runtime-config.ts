@@ -18,6 +18,7 @@ const runtimeConfigSchema = z.object({
   PINECONE_INDEX_NAME: z.string().min(1),
   PINECONE_INDEX_HOST: z.string().url(),
   PINECONE_NAMESPACE: z.string().min(1),
+  RAG_IMAGE_BUCKET: z.string().min(1),
 });
 
 export type RuntimeConfig = z.infer<typeof runtimeConfigSchema>;

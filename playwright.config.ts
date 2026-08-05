@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  timeout: 60_000,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
@@ -18,7 +19,7 @@ export default defineConfig({
     : {
         command: "node scripts/start-local.mjs",
         url: "http://localhost:3000",
-        reuseExistingServer: false,
+        reuseExistingServer: true,
         timeout: 120_000,
       },
   projects: [

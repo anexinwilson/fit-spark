@@ -2,7 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useMutation } from "@tanstack/react-query";
-import { Check, Loader2, Sparkles } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -90,7 +90,6 @@ export default function SubscribePage() {
               >
                 {plan.isPopular && (
                   <div className="flex items-center justify-center gap-1.5 bg-blue-600 py-2 text-xs font-semibold tracking-wide text-white uppercase">
-                    <Sparkles className="size-3.5" aria-hidden="true" />
                     Most popular
                   </div>
                 )}

@@ -29,7 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={geist.variable}>
-      <body className="bg-background text-foreground min-h-screen font-sans antialiased">
+      <body
+        className="bg-background text-foreground min-h-screen font-sans antialiased"
+        suppressHydrationWarning
+      >
         <ClerkProvider
           publishableKey={requireRuntimeConfigValue(
             "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",

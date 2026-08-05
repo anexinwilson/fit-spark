@@ -19,7 +19,7 @@ export const availablePlans: Plan[] = [
     interval: "week",
     description: "Perfect for getting started with personalized fitness",
     features: [
-      "Unlimited AI Workout Plans",
+      "Unlimited Workout Plans",
       "Personalized Weekly Schedules",
       "Cancel Anytime",
     ],
@@ -32,7 +32,7 @@ export const availablePlans: Plan[] = [
     isPopular: true,
     description: "Great for building consistent habits",
     features: [
-      "Unlimited AI Workout Plans",
+      "Unlimited Workout Plans",
       "Personalized Monthly Schedules",
       "Daily Workout Structure",
       "Cancel Anytime",
@@ -45,7 +45,7 @@ export const availablePlans: Plan[] = [
     interval: "year",
     description: "Best value for serious fitness enthusiasts pushing limits",
     features: [
-      "Unlimited AI Workout Plans",
+      "Unlimited Workout Plans",
       "Personalized Monthly Schedules",
       "Daily Workout Structure",
       "Cancel Anytime",

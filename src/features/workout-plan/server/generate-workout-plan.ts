@@ -1,19 +1,9 @@
-import { z } from "zod";
-
 import {
   type WorkoutPlanInput,
   type WeeklyWorkoutPlan,
+  weeklyWorkoutPlanSchema,
 } from "@/features/workout-plan/schema";
 import { generateGeminiJson } from "@/lib/ai/gemini";
-
-const dailyWorkoutSchema = z.object({
-  warmup: z.string().optional(),
-  mainWorkout: z.string().optional(),
-  cooldown: z.string().optional(),
-  cardio: z.string().optional(),
-});
-
-const weeklyWorkoutSchema = z.record(z.string(), dailyWorkoutSchema);
 
 function buildWorkoutPrompt(input: WorkoutPlanInput) {
   return `You are a certified fitness trainer creating a safe, beginner-friendly workout sequence.
@@ -43,5 +33,5 @@ export async function createWorkoutPlan(
 ): Promise<WeeklyWorkoutPlan> {
   const rawPlan = await generateGeminiJson(buildWorkoutPrompt(input));
   const parsed = JSON.parse(rawPlan) as unknown;
-  return weeklyWorkoutSchema.parse(parsed);
+  return weeklyWorkoutPlanSchema.parse(parsed);
 }

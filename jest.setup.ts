@@ -18,6 +18,7 @@ process.env.FITSPARK_RUNTIME_CONFIG_JSON = JSON.stringify({
   PINECONE_INDEX_NAME: "fitspark-exercises-index",
   PINECONE_INDEX_HOST: "https://test-index.pinecone.io",
   PINECONE_NAMESPACE: "exercises-v1",
+  RAG_IMAGE_BUCKET: "fitspark-test-rag-images",
 });
 
 if (!("json" in Response)) {

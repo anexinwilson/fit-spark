@@ -4,9 +4,9 @@ export const workoutPlanSchema = z.object({
   workoutType: z.string().min(1, "Choose a workout style"),
   fitnessGoal: z.string().min(1, "Choose your main goal"),
   experienceLevel: z.string().min(1, "Choose your experience level"),
-  preferredDuration: z.number().int().min(15).max(90),
+  preferredDuration: z.number().int().min(15).max(240),
   includeCardio: z.boolean(),
-  ageRange: z.string().min(1, "Choose your age range"),
+  ageRange: z.string().optional(),
   equipment: z
     .string()
     .min(2, "Tell us what equipment you can use, or enter bodyweight"),
@@ -16,6 +16,15 @@ export const workoutPlanSchema = z.object({
 
 export type WorkoutPlanInput = z.infer<typeof workoutPlanSchema>;
 
+export const workoutPlanDraftSchema = z.object({
+  step: z.number().int().min(0).max(2),
+  input: workoutPlanSchema.partial().extend({
+    limitations: z.string().max(500),
+  }),
+});
+
+export type WorkoutPlanDraft = z.infer<typeof workoutPlanDraftSchema>;
+
 export type DailyWorkoutPlan = {
   warmup?: string;
   mainWorkout?: string;
@@ -24,6 +33,16 @@ export type DailyWorkoutPlan = {
 };
 
 export type WeeklyWorkoutPlan = Record<string, DailyWorkoutPlan>;
+
+export const weeklyWorkoutPlanSchema = z.record(
+  z.string(),
+  z.object({
+    warmup: z.string().optional(),
+    mainWorkout: z.string().optional(),
+    cooldown: z.string().optional(),
+    cardio: z.string().optional(),
+  }),
+);
 
 export type WorkoutPlanResponse = {
   workoutPlan?: WeeklyWorkoutPlan;

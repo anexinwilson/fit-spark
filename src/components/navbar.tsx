@@ -1,7 +1,7 @@
 "use client";
 
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import { Dumbbell, Menu } from "lucide-react";
+import { CalendarDays, Dumbbell, History, Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -14,7 +14,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const authenticatedLinks = [
-  { href: "/workoutplan", label: "Workout plan" },
+  { href: "/today", label: "Today" },
+  { href: "/explore", label: "Explore" },
+  { href: "/workoutplan", label: "My Plan" },
+  { href: "/history", label: "History" },
+  { href: "/profile#subscription", label: "Billing" },
   { href: "/profile", label: "Profile" },
 ];
 
@@ -48,15 +52,59 @@ export default function NavBar() {
               nativeButton={false}
               variant="ghost"
               className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
+              render={<Link href="/today" />}
+            >
+              <CalendarDays aria-hidden="true" />
+              Today
+            </Button>
+            <Button
+              nativeButton={false}
+              variant="ghost"
+              className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
+              render={<Link href="/explore" />}
+            >
+              <Dumbbell aria-hidden="true" />
+              Explore
+            </Button>
+            <Button
+              nativeButton={false}
+              variant="ghost"
+              className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
               render={<Link href="/workoutplan" />}
             >
               <Dumbbell aria-hidden="true" />
-              Workout plan
+              My Plan
+            </Button>
+            <Button
+              nativeButton={false}
+              variant="ghost"
+              className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
+              render={<Link href="/history" />}
+            >
+              <History aria-hidden="true" />
+              History
+            </Button>
+            <Button
+              nativeButton={false}
+              variant="ghost"
+              className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
+              render={<Link href="/profile#subscription" />}
+            >
+              Profile & Billing
             </Button>
             <UserButton />
           </Show>
 
           <Show when="signed-out">
+            <Button
+              nativeButton={false}
+              variant="ghost"
+              className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
+              render={<Link href="/explore" />}
+            >
+              <Dumbbell aria-hidden="true" />
+              Explore
+            </Button>
             <SignInButton>
               <Button
                 variant="ghost"
@@ -91,15 +139,20 @@ export default function NavBar() {
               <Menu aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem render={<Link href="/explore" />}>
+                Explore
+              </DropdownMenuItem>
               <Show when="signed-in">
-                {authenticatedLinks.map((link) => (
-                  <DropdownMenuItem
-                    key={link.href}
-                    render={<Link href={link.href} />}
-                  >
-                    {link.label}
-                  </DropdownMenuItem>
-                ))}
+                {authenticatedLinks
+                  .filter((link) => link.href !== "/explore")
+                  .map((link) => (
+                    <DropdownMenuItem
+                      key={link.href}
+                      render={<Link href={link.href} />}
+                    >
+                      {link.label}
+                    </DropdownMenuItem>
+                  ))}
               </Show>
               <Show when="signed-out">
                 <DropdownMenuItem>

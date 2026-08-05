@@ -19,5 +19,5 @@ export default async function AuthContinuationPage() {
     redirect("/create-profile");
   }
 
-  redirect(profile.subscriptionActive ? "/workoutplan" : "/subscribe");
+  redirect(profile.subscriptionActive ? "/today" : "/subscribe");
 }

@@ -47,7 +47,11 @@ const LEVEL_OPTIONS = [
   { value: "intermediate", label: "Intermediate" },
 ];
 
-export function EquipmentCatalog() {
+export function EquipmentCatalog({
+  isPlanning = false,
+}: {
+  isPlanning?: boolean;
+}) {
   const [query, setQuery] = React.useState("");
   const [muscle, setMuscle] = React.useState("all");
   const [category, setCategory] = React.useState("all");
@@ -57,6 +61,7 @@ export function EquipmentCatalog() {
   const [results, setResults] = React.useState<EquipmentItem[]>([]);
   const [count, setCount] = React.useState<number>(0);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
   // Owned equipment set (persisted to DB)
   const [ownedIds, setOwnedIds] = React.useState<Set<string>>(new Set());
@@ -70,11 +75,16 @@ export function EquipmentCatalog() {
   React.useEffect(() => {
     getUserEquipment()
       .then((aliases) => setOwnedIds(new Set(aliases)))
-      .catch(() => {});
+      .catch(() =>
+        setLoadError(
+          "We could not load your equipment. Refresh and try again.",
+        ),
+      );
   }, []);
 
   const fetchEquipment = React.useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
@@ -86,11 +96,14 @@ export function EquipmentCatalog() {
       const res = await fetch(`/api/equipment/search?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch equipment data");
       const data: EquipmentSearchResponse = await res.json();
-      setResults(data.results || []);
-      setCount(data.count || 0);
-    } catch {
-      setResults([]);
-      setCount(0);
+      setResults(data.results);
+      setCount(data.count);
+    } catch (error) {
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "We could not load equipment. Refresh and try again.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -139,8 +152,12 @@ export function EquipmentCatalog() {
         }
         return next;
       });
-    } catch {
-      // silently ignore auth errors (not signed in)
+    } catch (error) {
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "We could not update your equipment. Try again.",
+      );
     } finally {
       setTogglingId(null);
     }
@@ -148,6 +165,31 @@ export function EquipmentCatalog() {
 
   return (
     <div className="space-y-8">
+      {loadError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300"
+        >
+          {loadError}
+        </div>
+      )}
+      {isPlanning && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-sm dark:border-blue-900 dark:bg-blue-950/30">
+          <div>
+            <p className="font-semibold text-blue-900 dark:text-blue-100">
+              Planning in progress
+            </p>
+            <p className="text-blue-800/80 dark:text-blue-200/80">
+              Select the equipment you can use, then continue to health and
+              safety.
+            </p>
+          </div>
+          <span className="shrink-0 font-semibold text-blue-700 dark:text-blue-300">
+            {ownedIds.size} selected
+          </span>
+        </div>
+      )}
+
       {/* Search & Filter Section */}
       <div className="bg-card rounded-2xl border p-4 shadow-xs sm:p-6">
         <div className="space-y-4">
@@ -331,6 +373,31 @@ export function EquipmentCatalog() {
         open={isDetailsOpen}
         onOpenChange={setIsDetailsOpen}
       />
+
+      {isPlanning && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-3 sm:px-6 sm:pb-5">
+          <div className="pointer-events-auto mx-auto flex max-w-7xl items-center justify-between gap-4 rounded-2xl border border-blue-200 bg-white/95 p-3 shadow-2xl shadow-blue-950/20 backdrop-blur sm:px-5 dark:border-blue-900 dark:bg-slate-950/95">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Planning your workout
+              </p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                {ownedIds.size === 0
+                  ? "Select the equipment you can use."
+                  : `${ownedIds.size} item${ownedIds.size === 1 ? "" : "s"} selected`}
+              </p>
+            </div>
+            <Button
+              type="button"
+              className="shrink-0 gap-2 bg-blue-600 hover:bg-blue-700"
+              disabled={ownedIds.size === 0}
+              onClick={() => window.location.assign("/workoutplan?step=2")}
+            >
+              Continue planning
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

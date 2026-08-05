@@ -131,7 +131,7 @@ export default function ProfilePage() {
   return (
     <section className="min-h-[calc(100svh-4rem)] bg-slate-50 py-12">
       <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6">
-        <Card>
+        <Card id="subscription">
           <CardContent className="flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:text-left">
             <Avatar className="size-20">
               <AvatarImage src={user.imageUrl} alt="" />

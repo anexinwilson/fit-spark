@@ -33,6 +33,11 @@ export async function POST(request: NextRequest) {
     }
 
     const workoutPlan = await createWorkoutPlan(input.data);
+    await prisma.workoutPlan.upsert({
+      where: { userId },
+      create: { userId, plan: workoutPlan },
+      update: { plan: workoutPlan },
+    });
     return NextResponse.json({ workoutPlan });
   } catch (error: unknown) {
     console.error("Workout plan generation failed", error);
