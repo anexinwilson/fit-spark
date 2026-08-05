@@ -2,13 +2,22 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, Check, Loader2, Plus, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Loader2, Plus, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { getUserEquipment } from "@/features/equipment/actions";
 import {
@@ -18,6 +27,7 @@ import {
   workoutPlanSchema,
 } from "@/features/workout-plan/schema";
 import { WorkoutPlanResult } from "@/features/workout-plan/workout-plan-result";
+import { WorkoutPlanLoading } from "@/features/workout-plan/components/workout-plan-loading";
 import { cn } from "@/lib/utils";
 
 const steps = ["Your goal", "Your experience", "Equipment & safety"] as const;
@@ -32,17 +42,97 @@ const limitationOptions = [
 
 async function generateWorkoutPlan(
   input: WorkoutPlanInput,
+  onStatusUpdate?: (status: string, node?: string) => void,
+  onChunkUpdate?: (chunk: string) => void,
 ): Promise<WorkoutPlanResponse> {
   const response = await fetch("/api/generate-plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  const data = (await response.json()) as WorkoutPlanResponse;
+
   if (!response.ok) {
-    throw new Error(data.error ?? "Unable to create your workout plan");
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error ?? "Unable to create your workout plan");
   }
-  return data;
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response stream available");
+  const decoder = new TextDecoder();
+
+  let result: WorkoutPlanResponse | null = null;
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      buffer += decoder.decode();
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let lineEnd: number;
+    while ((lineEnd = buffer.indexOf("\n")) !== -1) {
+      let line = buffer.slice(0, lineEnd);
+      buffer = buffer.slice(lineEnd + 1);
+      if (line.endsWith("\r")) {
+        line = line.slice(0, -1);
+      }
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data:")) continue;
+
+      const jsonStr = trimmed.slice(5).trim();
+      if (!jsonStr) continue;
+
+      let data: Record<string, unknown>;
+      try {
+        data = JSON.parse(jsonStr) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+
+      if (typeof data.error === "string") {
+        throw new Error(data.error);
+      }
+      if (typeof data.status === "string" && onStatusUpdate) {
+        onStatusUpdate(
+          data.status,
+          typeof data.node === "string" ? data.node : undefined,
+        );
+      }
+      if (typeof data.chunk === "string" && onChunkUpdate) {
+        onChunkUpdate(data.chunk);
+      }
+      if (data.complete) {
+        result = data as WorkoutPlanResponse;
+      }
+    }
+  }
+
+  if (buffer.trim().startsWith("data:")) {
+    const jsonStr = buffer.trim().slice(5).trim();
+    if (jsonStr) {
+      try {
+        const data = JSON.parse(jsonStr);
+        if (data.error) throw new Error(data.error);
+        if (data.status && onStatusUpdate)
+          onStatusUpdate(data.status, data.node);
+        if (data.chunk && onChunkUpdate) onChunkUpdate(data.chunk);
+        if (data.complete) result = data as WorkoutPlanResponse;
+      } catch (e) {
+        if (
+          e instanceof Error &&
+          e.message.length > 0 &&
+          !e.message.includes("JSON")
+        )
+          throw e;
+      }
+    }
+  }
+
+  if (!result) throw new Error("Stream closed before completing the plan");
+  return result;
 }
 
 type SavedDraft = WorkoutPlanDraft & { updatedAt: string };
@@ -102,7 +192,7 @@ function ChoiceCard({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "group cursor-pointer flex w-full items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]",
+        "group flex w-full cursor-pointer items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]",
         selected
           ? "border-blue-600 bg-blue-50 shadow-md dark:border-blue-400 dark:bg-blue-950/40"
           : "border-slate-200 bg-white hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900/60",
@@ -154,7 +244,7 @@ function SmallChoice({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "rounded-xl cursor-pointer border-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+        "cursor-pointer rounded-xl border-2 px-4 py-2.5 text-sm font-semibold transition-colors",
         selected
           ? "border-blue-600 bg-blue-600 text-white"
           : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
@@ -187,6 +277,12 @@ export function WorkoutPlanForm({
     null,
   );
   const [customLimitation, setCustomLimitation] = useState("");
+
+  const [activeNodeId, setActiveNodeId] = useState("equipmentResolver");
+  const [generationStatus, setGenerationStatus] = useState(
+    "Resolving equipment...",
+  );
+  const [generationStream, setGenerationStream] = useState("");
 
   const form = useForm<WorkoutPlanInput>({
     resolver: zodResolver(workoutPlanSchema),
@@ -270,11 +366,26 @@ export function WorkoutPlanForm({
   }, [draftQuery.data?.draft, form, requestedStep]);
 
   const generation = useMutation({
-    mutationFn: generateWorkoutPlan,
+    mutationFn: (input: WorkoutPlanInput) => {
+      setGenerationStream("");
+      setActiveNodeId("equipmentResolver");
+      setGenerationStatus("Resolving equipment...");
+      return generateWorkoutPlan(
+        input,
+        (status, node) => {
+          if (status) setGenerationStatus(status);
+          if (node) setActiveNodeId(node);
+        },
+        (chunk) => setGenerationStream((prev) => prev + chunk),
+      );
+    },
     onSuccess: (response) => {
       setActivePlan(response.workoutPlan);
       void clearDraftMutation.mutateAsync();
+      setGenerationStatus("Resolving equipment...");
+      setGenerationStream("");
     },
+    onError: () => {},
   });
 
   const draftInput = (): WorkoutPlanDraft["input"] => {
@@ -368,6 +479,142 @@ export function WorkoutPlanForm({
           Build a new plan
         </Button>
       </div>
+    );
+  }
+
+  if (generation.isPending) {
+    return (
+      <WorkoutPlanLoading
+        activeNodeId={activeNodeId}
+        statusMessage={generationStatus}
+        streamContent={generationStream}
+      />
+    );
+  }
+
+  if (generation.isError) {
+    const errorMessage =
+      generation.error?.message ||
+      "An unexpected error occurred while generating your plan.";
+    const isQuotaError =
+      errorMessage.includes("Quota") ||
+      errorMessage.includes("429") ||
+      errorMessage.includes("limit") ||
+      errorMessage.includes("API Quota");
+
+    return (
+      <Card className="overflow-hidden border-red-200 shadow-xl shadow-red-950/5 dark:border-red-900/50">
+        <CardHeader className="border-b bg-red-50/60 p-6 sm:p-8 dark:bg-red-950/30">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400">
+                <AlertCircle className="size-6" aria-hidden="true" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
+                    Generation Failed
+                  </CardTitle>
+                  <Badge variant="destructive" className="font-semibold">
+                    {isQuotaError ? "HTTP 429 Quota" : "Error"}
+                  </Badge>
+                </div>
+                <CardDescription className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  {isQuotaError
+                    ? "API request limit reached. Please check details below."
+                    : "An issue occurred while building your customized workout plan."}
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              type="button"
+              className="bg-blue-600 text-white hover:bg-blue-700 sm:self-center"
+              onClick={() => {
+                generation.reset();
+                submitPlan(form.getValues());
+              }}
+            >
+              Retry Generation
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-6 p-6 sm:p-8">
+          <div className="rounded-xl border border-red-200/80 bg-red-50/70 p-4 dark:border-red-900/40 dark:bg-red-950/20">
+            <p className="text-xs font-semibold uppercase tracking-wider text-red-900 dark:text-red-200">
+              Error Message
+            </p>
+            <p className="mt-1 text-sm font-medium text-red-800 dark:text-red-300">
+              {errorMessage}
+            </p>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Execution Log & Node Status
+              </p>
+              <Badge variant="outline" className="font-mono text-xs">
+                {activeNodeId || "failed"}
+              </Badge>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Last recorded node status:
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-slate-800 dark:text-slate-200">
+                {generationStatus || "Resolving equipment..."}
+              </p>
+            </div>
+            {generationStream ? (
+              <div className="mt-3 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-inner">
+                <div className="mb-2 flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span className="font-sans text-xs font-medium text-slate-400">
+                    Preserved Token Stream Log
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {generationStream.length} chars
+                  </span>
+                </div>
+                <pre className="max-h-52 overflow-y-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-slate-300">
+                  {generationStream}
+                </pre>
+              </div>
+            ) : null}
+          </div>
+        </CardContent>
+
+        <CardFooter className="flex flex-col gap-3 border-t bg-slate-50/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:bg-slate-900/40">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Need to adjust options? You can modify form fields or retry building your plan.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                generation.reset();
+              }}
+            >
+              Modify Form
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => {
+                generation.reset();
+                submitPlan(form.getValues());
+              }}
+            >
+              Retry Generation
+            </Button>
+          </div>
+        </CardFooter>
+      </Card>
     );
   }
 
@@ -508,7 +755,15 @@ export function WorkoutPlanForm({
                     name="trainingDays"
                     render={({ field }) => (
                       <>
-                        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                        {[
+                          "Monday",
+                          "Tuesday",
+                          "Wednesday",
+                          "Thursday",
+                          "Friday",
+                          "Saturday",
+                          "Sunday",
+                        ].map((day) => (
                           <SmallChoice
                             key={day}
                             label={day.slice(0, 3)}
@@ -516,7 +771,9 @@ export function WorkoutPlanForm({
                             onClick={() => {
                               const current = field.value || [];
                               if (current.includes(day)) {
-                                field.onChange(current.filter((d: string) => d !== day));
+                                field.onChange(
+                                  current.filter((d: string) => d !== day),
+                                );
                               } else {
                                 field.onChange([...current, day]);
                               }
@@ -806,9 +1063,7 @@ export function WorkoutPlanForm({
                 }
               >
                 {generation.isPending && <Loader2 className="animate-spin" />}
-                {generation.isPending
-                  ? "Building your plan..."
-                  : "Build my plan"}
+                {generation.isPending ? generationStatus : "Build my plan"}
               </Button>
             )}
           </div>

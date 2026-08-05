@@ -1,4 +1,21 @@
+const NativeResponse = typeof globalThis.Response !== "undefined" ? globalThis.Response : null;
 import "cross-fetch/polyfill";
+import { TextEncoder, TextDecoder } from "util";
+import { ReadableStream } from "stream/web";
+
+if (NativeResponse) {
+  global.Response = NativeResponse as typeof Response;
+}
+
+if (typeof global.TextEncoder === "undefined") {
+  global.TextEncoder = TextEncoder;
+}
+if (typeof global.TextDecoder === "undefined") {
+  global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+}
+if (typeof global.ReadableStream === "undefined") {
+  global.ReadableStream = ReadableStream as unknown as typeof global.ReadableStream;
+}
 
 process.env.FITSPARK_RUNTIME_CONFIG_JSON = JSON.stringify({
   CLERK_SECRET_KEY: "test-clerk-secret",

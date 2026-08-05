@@ -12,6 +12,7 @@ export const workoutPlanSchema = z.object({
     .min(2, "Tell us what equipment you can use, or enter bodyweight"),
   limitations: z.string().max(500),
   trainingDays: z.array(z.string()).min(1, "Select at least one day"),
+  daysPerWeek: z.number().int().min(1).max(7).optional(),
 });
 
 export type WorkoutPlanInput = z.infer<typeof workoutPlanSchema>;

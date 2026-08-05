@@ -1,4 +1,4 @@
-# BRIEFING — 2026-08-04T18:10:27Z
+# BRIEFING — 2026-08-06T03:39:02Z
 
 ## Mission
 
@@ -8,7 +8,7 @@ Record user requests, monitor progress via crons, manage orchestrator lifecycle,
 
 - Archetype: sentinel
 - Working directory: c:\Users\aen\Music\fit-spark\.agents\sentinel
-- Orchestrator: 7c7b29d3-73e0-403d-b067-9d710853fc7f
+- Orchestrator: 93d91601-9d18-4257-9c0c-a91b2faa80b7
 - Victory Auditor: TBD
 
 ## 🔒 Key Constraints
@@ -19,7 +19,7 @@ Record user requests, monitor progress via crons, manage orchestrator lifecycle,
 
 ## User Context
 
-- **Last user request**: Equipment Search and RAG Retrieval with Pinecone and Shadcn/Base UI.
+- **Last user request**: Fix and polish workout plan generator streaming UI (LangGraph node visualization, live token streaming, rate limit error handling).
 - **Pending clarifications**: none
 - **Delivered results**: []
 

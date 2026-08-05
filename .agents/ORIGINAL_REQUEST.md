@@ -38,3 +38,40 @@ The UI and codebase must not contain any AI-related terminology (e.g., "AI", "Sm
 - [ ] `npm run lint` and `npx prettier --check .` pass with zero errors.
 - [ ] `npm run typecheck` passes with zero errors.
       </USER_REQUEST>
+
+## 2026-08-06T03:39:02Z
+
+<USER_REQUEST>
+# Teamwork Project Prompt — Draft
+
+> Status: Launched
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+
+Fix and polish the FitSpark workout plan generator's streaming UI. Ensure that the LangGraph operations and AI generation stream are properly displayed without breaking the existing codebase or causing infinite loops.
+
+Working directory: c:\Users\aen\Music\fit-spark
+Integrity mode: development
+
+## Requirements
+
+### R1. Completely Redesign Loading Sequence
+The agents must completely redesign the loading sequence from scratch to beautifully visualize both the LangGraph node execution and the live AI token streaming, utilizing premium `shadcn/Base UI` aesthetics.
+
+### R2. Robust Error Handling
+Gracefully handle all API rate limits (e.g., HTTP 429) and errors. The UI must smoothly transition to an error state without infinite loading loops or raw unhandled exceptions bubbling up to the user.
+
+## Verification Resources
+To verify R2, the implementing agents should temporarily mock the `llm.invoke` call in `graph.ts` to throw a `RateLimitQuotaExhaustedError` and visually confirm the UI handles it cleanly before finalizing the implementation.
+
+## Acceptance Criteria
+
+### UI and UX Quality
+- [ ] When generation starts, the user sees a premium `shadcn/Base UI` loading screen replacing the form.
+- [ ] The current LangGraph node status (e.g. "Building your weekly schedule...") is displayed prominently.
+- [ ] A terminal-style box displays the raw LLM token stream in real-time as the plan is generated.
+- [ ] If an error occurs, the UI cleanly displays the error message without infinite spinners.
+
+### Codebase Health
+- [ ] The codebase must not contain AI-related branding (e.g., "AI", sparkles, "Powered by AI") per existing project rules.
+- [ ] `npm run lint` and `npx prettier --check .` pass with zero errors.
+</USER_REQUEST>

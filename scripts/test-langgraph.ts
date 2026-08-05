@@ -10,14 +10,33 @@ const WorkoutPlanState = Annotation.Root({
   goal: Annotation<string>(),
   experience: Annotation<string>(),
   daysPerWeek: Annotation<number>(),
+  trainingDays: Annotation<string[]>({
+    value: (x, y) => y ?? x,
+    default: () => [],
+  }),
   injuries: Annotation<string>(),
-  
+
   // Internal State
-  equipment: Annotation<string[]>({ default: () => [] }),
-  exercises: Annotation<string[]>({ default: () => [] }),
-  plan: Annotation<string | null>({ default: () => null }),
-  safetyIssues: Annotation<string[]>({ default: () => [] }),
-  retryCount: Annotation<number>({ default: () => 0 }),
+  equipment: Annotation<string[]>({
+    value: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  exercises: Annotation<string[]>({
+    value: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  plan: Annotation<string | null>({
+    value: (x, y) => y ?? x,
+    default: () => null,
+  }),
+  safetyIssues: Annotation<string[]>({
+    value: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  retryCount: Annotation<number>({
+    value: (x, y) => y ?? x,
+    default: () => 0,
+  }),
 });
 
 type WorkoutPlanStateType = typeof WorkoutPlanState.State;
@@ -27,9 +46,11 @@ type WorkoutPlanStateType = typeof WorkoutPlanState.State;
 let apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey && process.env.FITSPARK_RUNTIME_CONFIG_JSON) {
   try {
-    const config = JSON.parse(process.env.FITSPARK_RUNTIME_CONFIG_JSON);
+    const config = JSON.parse(
+      process.env.FITSPARK_RUNTIME_CONFIG_JSON,
+    ) as Record<string, string>;
     apiKey = config.GEMINI_API_KEY;
-  } catch (e) {
+  } catch {
     console.error("Failed to parse FITSPARK_RUNTIME_CONFIG_JSON");
   }
 }
@@ -42,19 +63,20 @@ const llm = new ChatGoogleGenerativeAI({
 
 // 3. Define the Nodes
 
-import pg from "pg";
-
-let config: any = {};
+let config: Record<string, string> = {};
 if (process.env.FITSPARK_RUNTIME_CONFIG_JSON) {
   try {
-    config = JSON.parse(process.env.FITSPARK_RUNTIME_CONFIG_JSON);
-  } catch (e) {}
+    config = JSON.parse(process.env.FITSPARK_RUNTIME_CONFIG_JSON) as Record<
+      string,
+      string
+    >;
+  } catch {}
 }
 
-const pool = new pg.Pool({ connectionString: config.DATABASE_URL });
-
 // Real Neon DB Equipment Resolver (Modified to use State for testing diverse scenarios)
-async function equipmentResolver(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
+async function equipmentResolver(
+  state: WorkoutPlanStateType,
+): Promise<Partial<WorkoutPlanStateType>> {
   console.log("-> [Node] Resolving Equipment & Profile...");
   // Instead of fetching a random user from Neon for this test, we use the equipment provided in the state
   // to ensure we can test vastly different Pinecone RAG scenarios.
@@ -62,12 +84,14 @@ async function equipmentResolver(state: WorkoutPlanStateType): Promise<Partial<W
 }
 
 // Real Pinecone RAG Retriever
-async function exerciseRetriever(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
+async function exerciseRetriever(
+  state: WorkoutPlanStateType,
+): Promise<Partial<WorkoutPlanStateType>> {
   console.log("-> [Node] Retrieving Exercises from Pinecone (RAG)...");
-  
+
   const endpoint = `${config.PINECONE_INDEX_HOST.replace(/\/$/, "")}/records/namespaces/${encodeURIComponent(config.PINECONE_NAMESPACE)}/search`;
   const equipmentQuery = state.equipment?.join(" ") || "bodyweight";
-  
+
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -78,7 +102,9 @@ async function exerciseRetriever(state: WorkoutPlanStateType): Promise<Partial<W
     },
     body: JSON.stringify({
       query: {
-        inputs: { text: `${equipmentQuery} exercises for ${state.goal}, focusing on ${state.injuries || 'general fitness'}` },
+        inputs: {
+          text: `${equipmentQuery} exercises for ${state.goal}, focusing on ${state.injuries || "general fitness"}`,
+        },
         top_k: 30, // Get a healthy variety of exercises
       },
       fields: ["name", "equipment_name", "category"],
@@ -91,21 +117,29 @@ async function exerciseRetriever(state: WorkoutPlanStateType): Promise<Partial<W
   }
 
   const data = await response.json();
-  const exercises = data.result?.hits?.map((hit: any) => hit.fields.name) || [];
-  console.log(`   [RAG] Retrieved ${exercises.length} real exercises from Pinecone.`);
-  
+  const exercises =
+    (data.result?.hits
+      ?.map((hit: { fields?: { name?: string } }) => hit.fields?.name)
+      .filter(Boolean) as string[]) || [];
+  console.log(
+    `   [RAG] Retrieved ${exercises.length} real exercises from Pinecone.`,
+  );
+
   return { exercises };
 }
 
 // The Plan Builder
-async function planBuilder(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
+async function planBuilder(
+  state: WorkoutPlanStateType,
+): Promise<Partial<WorkoutPlanStateType>> {
   const currentRetry = state.retryCount || 0;
   console.log(`-> [Node] Building Plan (Attempt ${currentRetry + 1})...`);
-  
+
   const issues = state.safetyIssues || [];
-  const safetyContext = issues.length > 0
-    ? `\n\nCRITICAL: The previous plan was rejected for these reasons:\n${issues.join("\n")}\nFIX THESE ISSUES.`
-    : "";
+  const safetyContext =
+    issues.length > 0
+      ? `\n\nCRITICAL: The previous plan was rejected for these reasons:\n${issues.join("\n")}\nFIX THESE ISSUES.`
+      : "";
 
   const prompt = `You are a certified personal trainer. Create a FULL 7-DAY WORKOUT PLAN based on the following constraints:
 Goal: ${state.goal}
@@ -124,20 +158,24 @@ CRITICAL RULES:
 Return a clean, simple 7-day workout plan. Do not use markdown code blocks, just text.`;
 
   const response = await llm.invoke(prompt);
-  
+
   // Log Token Usage for Efficiency
   const usage = response.usage_metadata;
   if (usage) {
-    console.log(`   [Tokens] Builder used ${usage.input_tokens} input, ${usage.output_tokens} output.`);
+    console.log(
+      `   [Tokens] Builder used ${usage.input_tokens} input, ${usage.output_tokens} output.`,
+    );
   }
 
   return { plan: response.content.toString() };
 }
 
 // The Safety Evaluator
-async function safetyEvaluator(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
+async function safetyEvaluator(
+  state: WorkoutPlanStateType,
+): Promise<Partial<WorkoutPlanStateType>> {
   console.log("-> [Node] Evaluating Safety...");
-  
+
   const prompt = `You are a strict safety evaluator for workout plans.
 User Injuries/Limitations: ${state.injuries || "None"}
 
@@ -150,19 +188,21 @@ If it is completely safe, respond with 'PASS'.`;
 
   const response = await llm.invoke([{ role: "user", content: prompt }]);
   const resultText = response.content.toString().trim();
-  
+
   const usage = response.usage_metadata;
   if (usage) {
-    console.log(`   [Tokens] Evaluator used ${usage.input_tokens} input, ${usage.output_tokens} output.`);
+    console.log(
+      `   [Tokens] Evaluator used ${usage.input_tokens} input, ${usage.output_tokens} output.`,
+    );
   }
   console.log(`   [Safety Result]: ${resultText.substring(0, 80)}...`);
-  
+
   if (resultText === "PASS" || resultText.includes("PASS")) {
     return { safetyIssues: [] };
   } else {
-    return { 
+    return {
       safetyIssues: [resultText],
-      retryCount: (state.retryCount || 0) + 1
+      retryCount: (state.retryCount || 0) + 1,
     };
   }
 }
@@ -171,14 +211,14 @@ If it is completely safe, respond with 'PASS'.`;
 function shouldRetry(state: WorkoutPlanStateType) {
   const issues = state.safetyIssues || [];
   const retries = state.retryCount || 0;
-  
+
   if (issues.length > 0 && retries < 2) {
     console.log("<- [Edge] Safety failed. Routing back to Plan Builder.");
     return "planBuilder";
   }
   if (issues.length > 0) {
-     console.log("<- [Edge] Max retries reached. Failing.");
-     return END;
+    console.log("<- [Edge] Max retries reached. Failing.");
+    return END;
   }
   console.log("<- [Edge] Safety passed. Completing workflow.");
   return END;
@@ -201,7 +241,7 @@ const app = workflow.compile();
 // 6. Test Runner
 async function runTest() {
   console.log("=== Starting LangGraph RAG Efficiency Test ===\n");
-  
+
   const scenarios = [
     {
       name: "Scenario 1: Pregnant Woman, Home Workout",
@@ -209,9 +249,11 @@ async function runTest() {
         goal: "Maintain fitness",
         experience: "Beginner",
         daysPerWeek: 3,
-        injuries: "7 months pregnant. Cannot do exercises lying flat on back or heavy core compression.",
+        trainingDays: ["Monday", "Wednesday", "Friday"],
+        injuries:
+          "7 months pregnant. Cannot do exercises lying flat on back or heavy core compression.",
         equipment: ["Dumbbells", "Exercise Ball", "Bodyweight"],
-      }
+      },
     },
     {
       name: "Scenario 2: Advanced Bodybuilder, Full Gym",
@@ -219,10 +261,17 @@ async function runTest() {
         goal: "Hypertrophy (Massive Chest and Back)",
         experience: "Advanced",
         daysPerWeek: 5,
+        trainingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
         injuries: "None",
-        equipment: ["Barbell", "Dumbbells", "Cable Machine", "Pull-up Bar", "Bench"],
-      }
-    }
+        equipment: [
+          "Barbell",
+          "Dumbbells",
+          "Cable Machine",
+          "Pull-up Bar",
+          "Bench",
+        ],
+      },
+    },
   ];
 
   for (const scenario of scenarios) {

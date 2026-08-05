@@ -1,25 +1,20 @@
-## 2026-08-04T18:17:37Z
-You are teamwork_preview_reviewer_m1_2 assigned to review Milestone 1: Equipment RAG Backend & Branding Cleanup in fit-spark.
-Working directory for your metadata and handoff report: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_reviewer_m1_2
-Project workspace directory: c:\Users\aen\Music\fit-spark
-Original Request path: c:\Users\aen\Music\fit-spark\.agents\ORIGINAL_REQUEST.md
-Global rules path: c:\Users\aen\Music\fit-spark\.agents\rules\AGENTS.md
-Master Scope document: c:\Users\aen\Music\fit-spark\PROJECT.md
+## 2026-08-05T22:16:28Z
+You are teamwork_preview_reviewer_m1_2.
+Your working directory is: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_reviewer_m1_2
+
+MANDATORY PATHS TO READ FIRST:
+- c:\Users\aen\Music\fit-spark\.agents\ORIGINAL_REQUEST.md
+- c:\Users\aen\Music\fit-spark\.agents\rules\AGENTS.md
+- c:\Users\aen\Music\fit-spark\PROJECT.md
+- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m1\handoff.md
+
+Mission:
+Review Milestone 1 for UI aesthetics, shadcn/Base UI compliance, and zero AI branding compliance.
 
 Instructions:
-1. Read `ORIGINAL_REQUEST.md`, `AGENTS.md`, `PROJECT.md`, and Worker 1's handoff report at `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m1\handoff.md`.
-2. Inspect the modified and created files:
-   - `src/app/subscribe/page.tsx`
-   - `src/features/workout-plan/workout-plan-form.tsx`
-   - `src/features/billing/plans.ts`
-   - `src/features/equipment/types.ts`
-   - `src/features/equipment/fallback-data.ts`
-   - `src/features/equipment/search-equipment.ts`
-   - `src/app/api/equipment/search/route.ts`
-   - `__tests__/equipment-search.test.ts`
-3. Verify:
-   - Architecture & Interface Contracts: Compare API route and types against `PROJECT.md`.
-   - Code Standards & Formatting: Ensure strict TypeScript safety and Prettier compliance.
-   - Run verification commands: `npm run lint`, `npx prettier --check .`, `npm run typecheck`, `npm run test`.
-4. Render an explicit verdict at the top of your handoff report: `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`. Write your report to `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_reviewer_m1_2\handoff.md`.
-5. Send a message to parent with your verdict and handoff path.
+1. Inspect `src/features/workout-plan/workout-plan-form.tsx`, `src/features/workout-plan/components/workout-plan-loading.tsx`, and all associated UI components.
+2. Verify that ONLY `shadcn/Base UI` primitives (`Card`, `Badge`, `Spinner`, `Skeleton`, `Separator`, `Button`, `Sonner`) are used.
+3. Verify zero AI branding terms ("AI", "Smart", "Powered by AI", sparkles emojis ✨/🤖) in UI strings, accessibility labels, or rendered components.
+4. Run `npm run typecheck` and `npx prettier --check .`.
+5. Render verdict: APPROVE or REQUEST_CHANGES.
+6. Record findings in handoff.md in your working directory and send message to orchestrator with verdict.

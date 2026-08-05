@@ -1,7 +1,7 @@
 import { StateGraph, END, Annotation } from "@langchain/langgraph";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import pg from "pg";
 import * as dotenv from "dotenv";
+import { RateLimitQuotaExhaustedError } from "@/lib/errors";
 
 dotenv.config({ path: ".env.local" });
 
@@ -9,43 +9,87 @@ export const WorkoutPlanState = Annotation.Root({
   goal: Annotation<string>(),
   experience: Annotation<string>(),
   daysPerWeek: Annotation<number>(),
-  trainingDays: Annotation<string[]>({ default: () => [] }),
+  trainingDays: Annotation<string[]>({
+    value: (x, y) => y ?? x,
+    default: () => [],
+  }),
   injuries: Annotation<string>(),
-  equipment: Annotation<string[]>({ default: () => [] }),
-  exercises: Annotation<string[]>({ default: () => [] }),
-  plan: Annotation<string | null>({ default: () => null }),
-  safetyIssues: Annotation<string[]>({ default: () => [] }),
-  retryCount: Annotation<number>({ default: () => 0 }),
+  equipment: Annotation<string[]>({
+    value: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  exercises: Annotation<string[]>({
+    value: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  plan: Annotation<string | null>({
+    value: (x, y) => y ?? x,
+    default: () => null,
+  }),
+  safetyIssues: Annotation<string[]>({
+    value: (x, y) => y ?? x,
+    default: () => [],
+  }),
+  retryCount: Annotation<number>({
+    value: (x, y) => y ?? x,
+    default: () => 0,
+  }),
 });
 
 export type WorkoutPlanStateType = typeof WorkoutPlanState.State;
 
-let config: any = {};
+let config: Record<string, string> = {};
 if (process.env.FITSPARK_RUNTIME_CONFIG_JSON) {
   try {
-    config = JSON.parse(process.env.FITSPARK_RUNTIME_CONFIG_JSON);
-  } catch (e) {}
+    config = JSON.parse(process.env.FITSPARK_RUNTIME_CONFIG_JSON) as Record<
+      string,
+      string
+    >;
+  } catch {}
 }
 
-const llm = new ChatGoogleGenerativeAI({
-  model: "gemini-flash-latest",
+const primaryLlm = new ChatGoogleGenerativeAI({
+  model: "gemini-3.6-flash",
   temperature: 0.4,
   apiKey: config.GEMINI_API_KEY || process.env.GEMINI_API_KEY,
+  maxRetries: 0,
 });
 
-async function equipmentResolver(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
+const fallback1 = new ChatGoogleGenerativeAI({
+  model: "gemini-3.5-flash",
+  temperature: 0.4,
+  apiKey: config.GEMINI_API_KEY || process.env.GEMINI_API_KEY,
+  maxRetries: 0,
+});
+
+const fallback2 = new ChatGoogleGenerativeAI({
+  model: "gemini-3.0-flash",
+  temperature: 0.4,
+  apiKey: config.GEMINI_API_KEY || process.env.GEMINI_API_KEY,
+  maxRetries: 0,
+});
+
+const llm = primaryLlm.withFallbacks({
+  fallbacks: [fallback1, fallback2],
+});
+
+async function equipmentResolver(
+  state: WorkoutPlanStateType,
+): Promise<Partial<WorkoutPlanStateType>> {
   console.log("-> [Node] Resolving Equipment & Profile...");
   // In a real API context, we would get this from Prisma using the auth user ID.
   // For the graph testing/evals, we fall back to state.
   return { equipment: state.equipment || ["bodyweight"] };
 }
 
-async function exerciseRetriever(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
+async function exerciseRetriever(
+  state: WorkoutPlanStateType,
+): Promise<Partial<WorkoutPlanStateType>> {
   console.log("-> [Node] Retrieving Exercises from Pinecone (RAG)...");
-  
-  const endpoint = `${config.PINECONE_INDEX_HOST?.replace(/\/$/, "")}/records/namespaces/${encodeURIComponent(config.PINECONE_NAMESPACE || 'exercises-v1')}/search`;
+
+  const endpoint = `${config.PINECONE_INDEX_HOST?.replace(/\/$/, "")}/records/namespaces/${encodeURIComponent(config.PINECONE_NAMESPACE || "exercises-v1")}/search`;
   const equipmentQuery = state.equipment?.join(" ") || "bodyweight";
-  
+
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -56,7 +100,9 @@ async function exerciseRetriever(state: WorkoutPlanStateType): Promise<Partial<W
     },
     body: JSON.stringify({
       query: {
-        inputs: { text: `${equipmentQuery} exercises for ${state.goal}, focusing on ${state.injuries || 'general fitness'}` },
+        inputs: {
+          text: `${equipmentQuery} exercises for ${state.goal}, focusing on ${state.injuries || "general fitness"}`,
+        },
         top_k: 30,
       },
       fields: ["name", "equipment_name", "category"],
@@ -69,24 +115,34 @@ async function exerciseRetriever(state: WorkoutPlanStateType): Promise<Partial<W
   }
 
   const data = await response.json();
-  const exercises = data.result?.hits?.map((hit: any) => hit.fields.name) || [];
-  
-  console.log(`   [RAG VERIFICATION] Fetched ${exercises.length} exercises from Pinecone vector DB.`);
+  const exercises =
+    (data.result?.hits
+      ?.map((hit: { fields?: { name?: string } }) => hit.fields?.name)
+      .filter(Boolean) as string[]) || [];
+
+  console.log(
+    `   [RAG VERIFICATION] Fetched ${exercises.length} exercises from Pinecone vector DB.`,
+  );
   if (exercises.length > 0) {
-    console.log(`   [RAG VERIFICATION] Allowed exercises: ${exercises.join(", ")}`);
+    console.log(
+      `   [RAG VERIFICATION] Allowed exercises: ${exercises.join(", ")}`,
+    );
   }
-  
+
   return { exercises };
 }
 
-async function planBuilder(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
+async function planBuilder(
+  state: WorkoutPlanStateType,
+): Promise<Partial<WorkoutPlanStateType>> {
   const currentRetry = state.retryCount || 0;
   console.log(`-> [Node] Building Plan (Attempt ${currentRetry + 1})...`);
-  
+
   const issues = state.safetyIssues || [];
-  const safetyContext = issues.length > 0
-    ? `\n\nCRITICAL: The previous plan was rejected for these reasons:\n${issues.join("\n")}\nFIX THESE ISSUES.`
-    : "";
+  const safetyContext =
+    issues.length > 0
+      ? `\n\nCRITICAL: The previous plan was rejected for these reasons:\n${issues.join("\n")}\nFIX THESE ISSUES.`
+      : "";
 
   const prompt = `Create a FULL 7-DAY WORKOUT PLAN based on the following constraints:
 Goal: ${state.goal}
@@ -112,9 +168,11 @@ Return ONLY valid JSON. Start directly with '{' and end with '}'. Do not include
   return { plan: response.content.toString() };
 }
 
-async function safetyEvaluator(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
+async function safetyEvaluator(
+  state: WorkoutPlanStateType,
+): Promise<Partial<WorkoutPlanStateType>> {
   console.log("-> [Node] Evaluating Plan for Safety and RAG Compliance...");
-  
+
   const prompt = `You are a strict evaluator for workout plans.
 User Injuries/Limitations: ${state.injuries || "None"}
 Allowed Exercises (RAG Database): ${(state.exercises || []).join(", ")}
@@ -129,14 +187,15 @@ If it violates EITHER task, explain exactly why in a short sentence (e.g., "Viol
 If it is completely safe AND 100% RAG compliant, respond with 'PASS'.`;
 
   const response = await llm.invoke([{ role: "user", content: prompt }]);
+
   const resultText = response.content.toString().trim();
-  
+
   if (resultText === "PASS" || resultText.includes("PASS")) {
     return { safetyIssues: [] };
   } else {
-    return { 
+    return {
       safetyIssues: [resultText],
-      retryCount: (state.retryCount || 0) + 1
+      retryCount: (state.retryCount || 0) + 1,
     };
   }
 }
@@ -144,12 +203,12 @@ If it is completely safe AND 100% RAG compliant, respond with 'PASS'.`;
 function shouldRetry(state: WorkoutPlanStateType) {
   const issues = state.safetyIssues || [];
   const retries = state.retryCount || 0;
-  
+
   if (issues.length > 0 && retries < 2) {
     return "planBuilder";
   }
   if (issues.length > 0) {
-     return END;
+    return END;
   }
   return END;
 }

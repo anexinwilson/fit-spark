@@ -36,6 +36,7 @@ const payload = {
   equipment: "dumbbells",
   limitations: "",
   daysPerWeek: 4,
+  trainingDays: ["Monday", "Wednesday", "Friday"],
 };
 
 beforeEach(() => {

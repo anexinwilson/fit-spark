@@ -1,61 +1,46 @@
-# BRIEFING — 2026-08-05T00:21:25Z
+# BRIEFING — 2026-08-06T03:56:45Z
 
 ## Mission
-Build the Equipment Search & Catalog UI page and components for fit-spark (Milestone 2).
+Execute Milestone 2 (Robust Error Handling, 429 Quota Limits & Mock Verification) for FitSpark.
 
 ## 🔒 My Identity
-- Archetype: implementer/qa/specialist
+- Archetype: teamwork_preview_worker_m2
 - Roles: implementer, qa, specialist
 - Working directory: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m2
-- Original parent: d294ce06-0d82-4df9-a4ea-a2b27f57a85d
-- Milestone: Milestone 2 (Equipment Search & Catalog UI)
+- Original parent: 93d91601-9d18-4257-9c0c-a91b2faa80b7
+- Milestone: Milestone 2
 
 ## 🔒 Key Constraints
-- Exclusively use existing shadcn/Base UI primitives (@base-ui/react and src/components/ui/ primitives).
-- ABSOLUTELY ZERO AI symbols (no sparkles icons Sparkles, ✨, robot emojis) and ZERO AI terms ("AI", "Smart", "Intelligent") in UI or rendered HTML.
-- Format all modified/created files using Prettier.
-- Follow global rules in AGENTS.md.
-- Ensure npm run lint, npx prettier --check ., npm run typecheck, npm run test pass.
+- FitSpark Global Rules (Workspace Hygiene, Architecture & Standards, No AI Branding, Prettier, shadcn/Base UI, No git push without permission)
+- Minimal change principle
+- Genuine implementation without hardcoded verification shortcuts
 
 ## Current Parent
-- Conversation ID: d294ce06-0d82-4df9-a4ea-a2b27f57a85d
-- Updated: 2026-08-05T00:21:25Z
+- Conversation ID: 93d91601-9d18-4257-9c0c-a91b2faa80b7
+- Updated: 2026-08-06T03:56:45Z
 
 ## Task Summary
-- **What to build**: Navigation link in navbar.tsx, `/equipment` page, `EquipmentCatalog` client feature component, `EquipmentCard` component, `EquipmentDetailsDialog` modal component, and integration tests `__tests__/equipment-ui.test.tsx`.
-- **Success criteria**: Functional equipment catalog with live search, filters (muscle group, category, difficulty level), reset filters, skeleton loading state, detail modal, clean UI with zero AI branding, passing tests and checks.
-- **Interface contracts**: PROJECT.md / ORIGINAL_REQUEST.md
-- **Code layout**: src/app/equipment/page.tsx, src/features/equipment/*, src/components/navbar.tsx, __tests__/equipment-ui.test.tsx
+- **What to build**: RateLimitQuotaExhaustedError class, update /api/generate-plan/route.ts SSE error handling, enhance workout-plan-form.tsx error UI & state management, mock verification in graph.ts, add unit test, run verification scripts.
+- **Success criteria**: Error handling streams cleanly, error UI preserves logs & shows clear error card with retry button, tests pass, typecheck/lint/prettier pass.
 
 ## Key Decisions Made
-- Created `@base-ui/react/dialog` wrapper in `src/components/ui/dialog.tsx`.
-- Added Equipment Catalog nav link in `src/components/navbar.tsx`.
-- Implemented `EquipmentCatalog`, `EquipmentCard`, `EquipmentDetailsDialog`, and `src/app/equipment/page.tsx`.
-- Created comprehensive integration tests in `__tests__/equipment-ui.test.tsx`.
+- Initial setup
 
 ## Artifact Index
-- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m2\DISPATCH.md
-- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m2\BRIEFING.md
-- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m2\progress.md
-- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m2\handoff.md
+- DISPATCH.md - task details
+- BRIEFING.md - working memory
+- progress.md - heartbeat progress
+- handoff.md - final report
 
 ## Change Tracker
-- **Files modified**:
-  - `src/components/navbar.tsx`: Added Equipment Catalog navigation link.
-  - `src/components/ui/dialog.tsx`: Created Base UI dialog primitive wrapper.
-  - `src/features/equipment/equipment-details-dialog.tsx`: Created equipment detail modal component.
-  - `src/features/equipment/equipment-card.tsx`: Created equipment card component.
-  - `src/features/equipment/equipment-catalog.tsx`: Created equipment catalog client feature component.
-  - `src/app/equipment/page.tsx`: Created `/equipment` page route.
-  - `src/app/dashboard/page.tsx`: Escaped apostrophes & updated link to `/equipment`.
-  - `__tests__/equipment-ui.test.tsx`: Created integration unit tests.
-- **Build status**: PASS
+- **Files modified**: None yet
+- **Build status**: Untested
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: PASS (9 suites passed, 48 total tests passed)
-- **Lint status**: PASS (0 warnings, 0 errors)
-- **Tests added/modified**: `__tests__/equipment-ui.test.tsx` (added 9 new tests)
+- **Build/test result**: Untested
+- **Lint status**: Untested
+- **Tests added/modified**: None
 
 ## Loaded Skills
 - None

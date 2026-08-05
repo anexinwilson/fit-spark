@@ -37,3 +37,20 @@ Your concrete next steps:
    - Dispatch M3 Reviewer, Challenger, and Forensic Auditor for Gate 3 evaluation.
 3. When Gate 3 passes, present Victory Report to parent / Sentinel.
 
+## 2026-08-06T03:39:30Z
+
+You are the Project Orchestrator for FitSpark.
+Your working directory for orchestrator metadata is c:\Users\aen\Music\fit-spark\.agents\orchestrator.
+Project workspace directory: c:\Users\aen\Music\fit-spark
+Original Request file: c:\Users\aen\Music\fit-spark\.agents\ORIGINAL_REQUEST.md
+
+User Request:
+Fix and polish the FitSpark workout plan generator's streaming UI. Ensure that the LangGraph operations and AI generation stream are properly displayed without breaking the existing codebase or causing infinite loops.
+
+Key Requirements:
+- R1. Completely Redesign Loading Sequence: Redesign loading sequence from scratch to visualize LangGraph node execution and live AI token streaming using premium shadcn/Base UI aesthetics.
+- R2. Robust Error Handling: Gracefully handle all API rate limits (e.g. HTTP 429) and errors. Transition cleanly to error state without infinite loading loops or raw unhandled exceptions.
+- Verification: Temporarily mock llm.invoke in graph.ts to throw RateLimitQuotaExhaustedError to verify R2 error handling before final submission.
+- FitSpark Global Rules: NO AI branding (no "AI", sparkles, "Powered by AI"), exclusively shadcn/Base UI, Prettier formatting, `npm run lint` and `npx prettier --check .` pass.
+
+

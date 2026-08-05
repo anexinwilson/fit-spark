@@ -1,48 +1,56 @@
-# BRIEFING — 2026-08-04T18:17:30Z
+# BRIEFING — 2026-08-06T03:46:16Z
 
 ## Mission
-
-Execute Milestone 1: Equipment RAG Backend & Branding Cleanup for fit-spark.
+Execute Milestone 1: Redesign Loading Sequence & Live Token Streaming UI (SSE Stream Buffer Parser fix, LangGraph Stepper, Streaming Terminal Box). STATUS: COMPLETED.
 
 ## 🔒 My Identity
-
 - Archetype: implementer/qa/specialist
 - Roles: implementer, qa, specialist
 - Working directory: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m1
-- Original parent: d294ce06-0d82-4df9-a4ea-a2b27f57a85d
-- Milestone: Milestone 1 - Equipment RAG Backend & Branding Cleanup
+- Original parent: 93d91601-9d18-4257-9c0c-a91b2faa80b7
+- Milestone: Milestone 1
 
 ## 🔒 Key Constraints
+- Zero AI Branding (no "AI", "AI Coach", "Smart Generation", "Powered by AI", ✨, 🤖)
+- Use exclusively shadcn/Base UI primitives
+- Genuine code implementations (no hardcoding test results or facade implementations)
+- Must pass tsc / lint / prettier
 
-- Remove Sparkles icon import & usage from `src/app/subscribe/page.tsx` and `src/features/workout-plan/workout-plan-form.tsx`.
-- Ensure no other Sparkles icons or AI terms ("AI", "Smart", "Intelligent") exist in UI components.
-- Equipment RAG Search Backend with Pinecone Integrated Inference POST `${PINECONE_INDEX_HOST}/records/namespaces/${PINECONE_NAMESPACE}/search` and local fallback.
-- Equipment dataset with 15+ items in fallback data.
-- API route `src/app/api/equipment/search/route.ts`.
-- Jest unit test `__tests__/equipment-search.test.ts`.
-- Run `npm run lint`, `npx prettier --check .`, `npm run typecheck`, and `npm run test`.
-- Rules: No AI branding in UI, use Prettier, shadcn/Base UI only, don't run `git push`, propose commits if any.
+## Current Parent
+- Conversation ID: 93d91601-9d18-4257-9c0c-a91b2faa80b7
+- Updated: 2026-08-06T03:46:16Z
+
+## Task Summary
+- **What to build**: SSE stream parser fix, node execution stepper, stream terminal box, UI integration in `workout-plan-form.tsx`.
+- **Success criteria**: Robust SSE parser, smooth streaming UI, node stepper tracking LangGraph node state, full rules compliance, green typecheck/lint/prettier.
+- **Interface contracts**: PROJECT.md, AGENTS.md
+- **Code layout**: src/features/workout-plan/
+
+## Key Decisions Made
+- Implemented `WorkoutPlanLoading` component in `src/features/workout-plan/components/workout-plan-loading.tsx` with 4-node stepper and auto-scrolling terminal box.
+- Upgraded `generateWorkoutPlan` SSE parser in `workout-plan-form.tsx` to index-based line buffer parser.
+- Enriched `POST /api/generate-plan` SSE payload to emit `{ status, node: nodeName }`.
+
+## Artifact Index
+- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m1\handoff.md — Handoff report
 
 ## Change Tracker
-
 - **Files modified**:
-  - `src/app/subscribe/page.tsx`: Removed Sparkles icon import and card header icon
-  - `src/features/workout-plan/workout-plan-form.tsx`: Removed Sparkles icon import and submit button icon
-  - `src/features/billing/plans.ts`: Cleaned up AI terminology from plan feature descriptions
-  - `src/features/equipment/types.ts`: Defined `EquipmentItem`, `EquipmentSearchQuery`, and `EquipmentSearchResponse` interfaces
-  - `src/features/equipment/fallback-data.ts`: Created dataset of 16 gym equipment and exercise items
-  - `src/features/equipment/search-equipment.ts`: Implemented Pinecone Integrated Inference vector retrieval with local fallback search
-  - `src/app/api/equipment/search/route.ts`: Created API route handler supporting query parameters
-  - `__tests__/equipment-search.test.ts`: Created unit tests for search module and API route
+  - `src/features/workout-plan/components/workout-plan-loading.tsx` (created)
+  - `src/features/workout-plan/workout-plan-form.tsx` (updated SSE parser & loading UI)
+  - `src/features/workout-plan/schema.ts` (added daysPerWeek)
+  - `src/app/api/generate-plan/route.ts` (standardized node status and payloads)
+  - `src/features/workout-generator/graph.ts` (added Annotation value reducers)
+  - `evals/eval-langgraph.ts` (fixed imports and types)
+  - `scripts/test-langgraph.ts` (fixed Annotation reducers and types)
+  - `__tests__/generate-workoutplan.test.ts` (added trainingDays to test payload)
+- **Build status**: All checks PASSED (typecheck, lint, prettier, jest).
+- **Pending issues**: None
 
 ## Quality Status
-
-- **Build/test result**: All 7 Jest test suites passed (19 tests total)
-- **Typecheck status**: Passed (`tsc --noEmit` code 0)
-- **Lint status**: Passed (`eslint . --max-warnings=0` code 0)
-- **Prettier status**: Passed (`npx prettier --check .` code 0)
-- **Tests added/modified**: `__tests__/equipment-search.test.ts`
+- **Build/test result**: PASSED (8/8 test suites, 23/23 unit tests)
+- **Lint status**: 0 errors, 0 warnings
+- **Tests added/modified**: Updated unit test payload
 
 ## Loaded Skills
-
-- None
+None

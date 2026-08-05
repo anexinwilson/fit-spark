@@ -1,52 +1,43 @@
-# BRIEFING — 2026-08-04T18:13:20Z
+# BRIEFING — 2026-08-06T03:41:00Z
 
 ## Mission
-
-Survey Pinecone & RAG Data Pipeline in fit-spark (dependencies, configuration, embedding setup, equipment data schema/seed scripts, server actions, fallbacks).
+Investigate backend graph execution (`graph.ts`, LangGraph workflow, nodes, state definitions, LLM calls, streaming event emission, API route handler) for FitSpark workout plan generation.
 
 ## 🔒 My Identity
-
-- Archetype: teamwork_preview_explorer
-- Roles: Explorer, Surveyor
+- Archetype: explorer
+- Roles: Teamwork explorer (survey 2)
 - Working directory: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_explorer_survey_2
-- Original parent: d294ce06-0d82-4df9-a4ea-a2b27f57a85d
-- Milestone: Pinecone & RAG Data Pipeline Survey
+- Original parent: 93d91601-9d18-4257-9c0c-a91b2faa80b7
+- Milestone: backend graph execution survey
 
 ## 🔒 Key Constraints
-
-- Read-only investigation — do NOT modify source code or fit-spark project files outside of .agents/teamwork_preview_explorer_survey_2
-- Adhere to global rules: Workspace hygiene, Architecture & Standards, No AI Branding, Code Formatting, UI Framework (shadcn/Base UI)
-- All findings must be recorded in handoff.md and reported to parent via send_message
+- Read-only investigation — do NOT implement
+- Deliver findings in handoff.md and send_message to orchestrator
+- Follow FitSpark global rules
 
 ## Current Parent
-
-- Conversation ID: d294ce06-0d82-4df9-a4ea-a2b27f57a85d
-- Updated: 2026-08-04T18:13:20Z
+- Conversation ID: 93d91601-9d18-4257-9c0c-a91b2faa80b7
+- Updated: 2026-08-06T03:41:00Z
 
 ## Investigation State
-
 - **Explored paths**:
-  - `package.json`, `.env.local`, `src/lib/runtime-config.ts`, `src/lib/server-env.ts`
-  - `scripts/rag/ingest-exercises.mjs`, `scripts/rag/ingest-exercises.test.mjs`
-  - `tests/rag-gemini-smoke.mjs`
-  - `src/features/workout-plan/server/generate-workout-plan.ts`
-  - `src/app/api/...` routes
+  - `src/features/workout-generator/graph.ts`
+  - `src/app/api/generate-plan/route.ts`
+  - `src/features/workout-plan/workout-plan-form.tsx`
+  - `evals/eval-langgraph.ts`
+  - `src/app/api/generate-workoutplan/route.ts`
+  - `src/lib/ai/gemini.ts`
 - **Key findings**:
-  - No `@pinecone-database/pinecone` SDK dependency; raw `fetch` HTTP REST API calls are used with Pinecone API version `2026-04`.
-  - Configured via `FITSPARK_RUNTIME_CONFIG_JSON` keys: `PINECONE_API_KEY`, `PINECONE_INDEX_NAME`, `PINECONE_INDEX_HOST`, `PINECONE_NAMESPACE`.
-  - Embeddings are generated automatically using Pinecone Integrated Inference (no OpenAI or local embedding model needed).
-  - Seed dataset (`yuhonas/free-exercise-db`) normalized via `scripts/rag/ingest-exercises.mjs` into 800+ exercise records with image mirroring to GCS bucket (`FITSPARK_RAG_IMAGE_BUCKET`).
-  - Missing server actions/API routes in `src/` for equipment vector search.
-  - Missing fallback logic/mock data strategy in `src/` when Pinecone API calls fail or credentials are missing.
-- **Unexplored areas**: None. Survey is complete.
+  - LangGraph workflow contains 4 nodes (`equipmentResolver`, `exerciseRetriever`, `planBuilder`, `safetyEvaluator`) and conditional retries (`shouldRetry`).
+  - `llm.invoke` calls occur in `planBuilder` (line 130) and `safetyEvaluator` (line 150).
+  - SSE streaming handler `POST /api/generate-plan` converts `streamEvents()` events into `on_chain_start` status messages and `on_chat_model_stream` token chunks.
+  - Rate limit (429) errors are caught in route handler stream `try/catch`, sent as `data: {"error": ...}`, and handled cleanly on client.
+- **Unexplored areas**: None (all survey requirements completed).
 
 ## Key Decisions Made
-
-- Executed lint, typecheck, rag:test, and rag-gemini-smoke test to verify current project health.
-- Documented findings, data models, missing routes, and fallback recommendations in `handoff.md`.
+- Completed full analysis of backend graph execution and recorded all findings in `handoff.md`.
 
 ## Artifact Index
-
-- `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_explorer_survey_2\DISPATCH.md` — Log of dispatch messages
+- `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_explorer_survey_2\DISPATCH.md` — Dispatch log
 - `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_explorer_survey_2\BRIEFING.md` — Working briefing index
-- `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_explorer_survey_2\handoff.md` — Final handoff report
+- `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_explorer_survey_2\handoff.md` — Complete 5-component handoff report

@@ -46,13 +46,15 @@ export function WorkoutPlanResult({ plan }: WorkoutPlanResultProps) {
     return (
       <section aria-live="polite" className="space-y-6">
         <div>
-          <Badge className="bg-blue-100 text-blue-800">Your plan is ready</Badge>
+          <Badge className="bg-blue-100 text-blue-800">
+            Your plan is ready
+          </Badge>
           <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
             Here is your workout plan
           </h2>
         </div>
-        <Card className="border-blue-500 shadow-md ring-2 ring-blue-500/10 p-6">
-          <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+        <Card className="border-blue-500 p-6 shadow-md ring-2 ring-blue-500/10">
+          <div className="font-sans text-sm leading-relaxed whitespace-pre-wrap text-slate-800 dark:text-slate-200">
             {plan}
           </div>
         </Card>

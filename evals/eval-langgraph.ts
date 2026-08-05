@@ -1,8 +1,8 @@
-import { workoutPlanWorkflow } from "../src/features/workout-generator/graph.ts";
+import { workoutPlanWorkflow } from "../src/features/workout-generator/graph";
 
 async function runEvals() {
   console.log("=== Running Formal Evals on LangGraph (Phase 1b) ===\n");
-  
+
   const edgeCases = [
     {
       name: "Edge Case 1: Pregnant Woman, Home Workout",
@@ -10,9 +10,11 @@ async function runEvals() {
         goal: "Maintain fitness",
         experience: "Beginner",
         daysPerWeek: 3,
-        injuries: "7 months pregnant. Cannot do exercises lying flat on back or heavy core compression.",
+        trainingDays: ["Monday", "Wednesday", "Friday"],
+        injuries:
+          "7 months pregnant. Cannot do exercises lying flat on back or heavy core compression.",
         equipment: ["Dumbbells", "Exercise Ball", "Bodyweight"],
-      }
+      },
     },
     {
       name: "Edge Case 2: Advanced Bodybuilder, Full Gym",
@@ -20,10 +22,17 @@ async function runEvals() {
         goal: "Hypertrophy (Massive Chest and Back)",
         experience: "Advanced",
         daysPerWeek: 5,
+        trainingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
         injuries: "None",
-        equipment: ["Barbell", "Dumbbells", "Cable Machine", "Pull-up Bar", "Bench"],
-      }
-    }
+        equipment: [
+          "Barbell",
+          "Dumbbells",
+          "Cable Machine",
+          "Pull-up Bar",
+          "Bench",
+        ],
+      },
+    },
   ];
 
   let passed = 0;
@@ -32,9 +41,15 @@ async function runEvals() {
     console.log(`\n>>> EVALUATING: ${edgeCase.name}`);
     try {
       const finalState = await workoutPlanWorkflow.invoke(edgeCase.state);
-      
-      if (finalState.safetyIssues && finalState.safetyIssues.length > 0 && finalState.retryCount >= 2) {
-        console.log(`   [FAIL] Workflow could not produce a safe plan after max retries.`);
+
+      if (
+        finalState.safetyIssues &&
+        finalState.safetyIssues.length > 0 &&
+        finalState.retryCount >= 2
+      ) {
+        console.log(
+          `   [FAIL] Workflow could not produce a safe plan after max retries.`,
+        );
         console.log(`   [Reason]: ${finalState.safetyIssues[0]}`);
       } else {
         console.log(`   [PASS] Produced safe plan.`);
