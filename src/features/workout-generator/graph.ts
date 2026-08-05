@@ -9,6 +9,7 @@ export const WorkoutPlanState = Annotation.Root({
   goal: Annotation<string>(),
   experience: Annotation<string>(),
   daysPerWeek: Annotation<number>(),
+  trainingDays: Annotation<string[]>({ default: () => [] }),
   injuries: Annotation<string>(),
   equipment: Annotation<string[]>({ default: () => [] }),
   exercises: Annotation<string[]>({ default: () => [] }),
@@ -70,6 +71,11 @@ async function exerciseRetriever(state: WorkoutPlanStateType): Promise<Partial<W
   const data = await response.json();
   const exercises = data.result?.hits?.map((hit: any) => hit.fields.name) || [];
   
+  console.log(`   [RAG VERIFICATION] Fetched ${exercises.length} exercises from Pinecone vector DB.`);
+  if (exercises.length > 0) {
+    console.log(`   [RAG VERIFICATION] Allowed exercises: ${exercises.join(", ")}`);
+  }
+  
   return { exercises };
 }
 
@@ -82,38 +88,45 @@ async function planBuilder(state: WorkoutPlanStateType): Promise<Partial<Workout
     ? `\n\nCRITICAL: The previous plan was rejected for these reasons:\n${issues.join("\n")}\nFIX THESE ISSUES.`
     : "";
 
-  const prompt = `You are a certified personal trainer. Create a FULL 7-DAY WORKOUT PLAN based on the following constraints:
+  const prompt = `Create a FULL 7-DAY WORKOUT PLAN based on the following constraints:
 Goal: ${state.goal}
 Experience: ${state.experience}
 Days per Week to Train: ${state.daysPerWeek}
+Target Training Days: ${(state.trainingDays || []).join(", ") || state.daysPerWeek + " days"}
 Injuries/Limitations: ${state.injuries || "None"}
 
 Available Equipment: ${(state.equipment || []).join(", ")}
-Available Exercises (FROM RAG DATABASE): ${(state.exercises || []).join(", ")}
+Available Exercises (STRICT RAG DATABASE LIMIT): ${(state.exercises || []).join(", ")}
 ${safetyContext}
 
 CRITICAL RULES:
-1. You MUST outline all 7 days of the week (e.g., Day 1, Day 2... Day 7), clearly labeling rest days.
-2. You MUST ONLY use exercises from the "Available Exercises" list above. Do NOT use any exercises outside of this list.
+1. You MUST ONLY use exercises from the "Available Exercises" list above. Do NOT use any exercises outside of this list. This is a strict RAG requirement.
+2. Do NOT use the phrase 'Rest Day'. People want to be consistent and go to the gym every day. If a day does not have intense lifting, schedule 'Active Recovery', 'Mobility', or 'Light Cardio' so they still build the habit.
+3. You must return valid JSON that exactly matches this TypeScript schema:
+   type WeeklyWorkoutPlan = Record<string, { warmup?: string, mainWorkout?: string, cooldown?: string, cardio?: string }>;
+   The keys MUST be the days of the week (e.g., "Monday", "Tuesday").
 
-Return a clean, simple 7-day workout plan. Do not use markdown code blocks, just text.`;
+Return ONLY valid JSON. Start directly with '{' and end with '}'. Do not include any introductory text, preambles, or markdown formatting.`;
 
   const response = await llm.invoke(prompt);
   return { plan: response.content.toString() };
 }
 
 async function safetyEvaluator(state: WorkoutPlanStateType): Promise<Partial<WorkoutPlanStateType>> {
-  console.log("-> [Node] Evaluating Safety...");
+  console.log("-> [Node] Evaluating Plan for Safety and RAG Compliance...");
   
-  const prompt = `You are a strict safety evaluator for workout plans.
+  const prompt = `You are a strict evaluator for workout plans.
 User Injuries/Limitations: ${state.injuries || "None"}
+Allowed Exercises (RAG Database): ${(state.exercises || []).join(", ")}
 
 Proposed Plan:
 ${state.plan}
 
-Does this plan contain any exercises that clearly violate the user's injuries or limitations?
-If it violates them, explain exactly why in a short sentence.
-If it is completely safe, respond with 'PASS'.`;
+Task 1: SAFETY. Does this plan contain any exercises that clearly violate the user's injuries or limitations?
+Task 2: RAG COMPLIANCE. Does this plan contain ANY exercises that are NOT in the 'Allowed Exercises' list?
+
+If it violates EITHER task, explain exactly why in a short sentence (e.g., "Violates Safety: squats are bad for bad knees" OR "Violates RAG: 'Bench Press' is not in the Allowed Exercises list").
+If it is completely safe AND 100% RAG compliant, respond with 'PASS'.`;
 
   const response = await llm.invoke([{ role: "user", content: prompt }]);
   const resultText = response.content.toString().trim();

@@ -15,7 +15,7 @@ const orderedDays = [
 ];
 
 type WorkoutPlanResultProps = {
-  plan: WeeklyWorkoutPlan;
+  plan: WeeklyWorkoutPlan | string;
 };
 
 function WorkoutDetails({ workout }: { workout: WeeklyWorkoutPlan[string] }) {
@@ -42,6 +42,24 @@ function WorkoutDetails({ workout }: { workout: WeeklyWorkoutPlan[string] }) {
 }
 
 export function WorkoutPlanResult({ plan }: WorkoutPlanResultProps) {
+  if (typeof plan === "string") {
+    return (
+      <section aria-live="polite" className="space-y-6">
+        <div>
+          <Badge className="bg-blue-100 text-blue-800">Your plan is ready</Badge>
+          <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+            Here is your workout plan
+          </h2>
+        </div>
+        <Card className="border-blue-500 shadow-md ring-2 ring-blue-500/10 p-6">
+          <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+            {plan}
+          </div>
+        </Card>
+      </section>
+    );
+  }
+
   const activeDays = orderedDays.filter((day) => plan[day]);
   const [today, next, ...later] = activeDays;
 

@@ -33,7 +33,7 @@ const limitationOptions = [
 async function generateWorkoutPlan(
   input: WorkoutPlanInput,
 ): Promise<WorkoutPlanResponse> {
-  const response = await fetch("/api/generate-workoutplan", {
+  const response = await fetch("/api/generate-plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -102,7 +102,7 @@ function ChoiceCard({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "group flex w-full items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]",
+        "group cursor-pointer flex w-full items-start justify-between rounded-2xl border-2 p-4 text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99]",
         selected
           ? "border-blue-600 bg-blue-50 shadow-md dark:border-blue-400 dark:bg-blue-950/40"
           : "border-slate-200 bg-white hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900/60",
@@ -154,7 +154,7 @@ function SmallChoice({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "rounded-xl border-2 px-4 py-2.5 text-sm font-semibold transition-colors",
+        "rounded-xl cursor-pointer border-2 px-4 py-2.5 text-sm font-semibold transition-colors",
         selected
           ? "border-blue-600 bg-blue-600 text-white"
           : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200",
@@ -256,8 +256,8 @@ export function WorkoutPlanForm({
       preferredDuration: 45,
       includeCardio: false,
       ageRange: "",
-      equipment: "",
-      daysPerWeek: 3,
+      equipment: form.getValues("equipment") || "",
+      trainingDays: ["Monday", "Wednesday", "Friday"],
       ...draft.input,
     });
     if (
@@ -287,7 +287,7 @@ export function WorkoutPlanForm({
       includeCardio: values.includeCardio,
       ageRange: values.ageRange,
       limitations: form.getValues("limitations"),
-      daysPerWeek: values.daysPerWeek,
+      trainingDays: values.trainingDays,
     };
   };
 
@@ -505,15 +505,22 @@ export function WorkoutPlanForm({
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Controller
                     control={form.control}
-                    name="daysPerWeek"
+                    name="trainingDays"
                     render={({ field }) => (
                       <>
-                        {[2, 3, 4].map((days) => (
+                        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
                           <SmallChoice
-                            key={days}
-                            label={`${days} days`}
-                            selected={field.value === days}
-                            onClick={() => field.onChange(days)}
+                            key={day}
+                            label={day.slice(0, 3)}
+                            selected={field.value?.includes(day)}
+                            onClick={() => {
+                              const current = field.value || [];
+                              if (current.includes(day)) {
+                                field.onChange(current.filter((d: string) => d !== day));
+                              } else {
+                                field.onChange([...current, day]);
+                              }
+                            }}
                           />
                         ))}
                       </>
