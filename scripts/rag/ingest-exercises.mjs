@@ -1,24 +1,13 @@
 import { pathToFileURL } from "node:url";
+import pg from "pg";
+import { normalizeEquipment } from "./equipment-normalization.mjs";
 
 const SOURCE_COMMIT = "b0eed061e1c832b3ed815fbaa4b45b3cdc14df49";
 const SOURCE_URL = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${SOURCE_COMMIT}/dist/exercises.json`;
 const IMAGE_BASE_URL = `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${SOURCE_COMMIT}/exercises/`;
 const PINECONE_API_VERSION = "2026-04";
 const BATCH_SIZE = 50;
-const EQUIPMENT_LABELS = {
-  "body only": "Bodyweight",
-  bands: "Resistance bands",
-  barbell: "Barbell",
-  cable: "Cable machine",
-  dumbbell: "Dumbbell",
-  "e-z curl bar": "EZ curl bar",
-  "exercise ball": "Exercise ball",
-  "foam roll": "Foam roller",
-  kettlebells: "Kettlebell",
-  machine: "Machine",
-  "medicine ball": "Medicine ball",
-  other: "Other equipment",
-};
+const { Pool } = pg;
 const GCS_METADATA_URL =
   "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 
@@ -27,23 +16,13 @@ function equipmentDetails(exercise) {
     typeof exercise.equipment === "string" && exercise.equipment.trim()
       ? exercise.equipment.trim().toLowerCase()
       : "unspecified";
-  const equipmentName =
-    equipmentType === "machine"
-      ? exercise.name
-      : (EQUIPMENT_LABELS[equipmentType] ?? "Unspecified equipment");
-  const aliases = new Set([equipmentName.toLowerCase()]);
-
-  if (equipmentType === "machine") {
-    aliases.add("gym machine");
-    aliases.add("exercise machine");
-    if (exercise.name.toLowerCase().endsWith(" machine")) {
-      aliases.add(exercise.name.slice(0, -" machine".length).toLowerCase());
-    }
-  }
-  if (equipmentType === "cable") aliases.add("cable");
+  const normalized = normalizeEquipment(exercise);
+  const equipmentName = normalized?.name ?? "Unclassified equipment";
+  const aliases = new Set(normalized?.aliases ?? [equipmentType]);
 
   return {
     equipmentType,
+    equipmentSlug: normalized?.slug ?? null,
     equipmentName,
     equipmentAliases: [...aliases],
   };
@@ -65,6 +44,8 @@ export function parseRuntimeConfig(raw) {
     "PINECONE_API_KEY",
     "PINECONE_INDEX_HOST",
     "PINECONE_NAMESPACE",
+    "RAG_IMAGE_BUCKET",
+    "DATABASE_URL",
   ]) {
     if (typeof config[key] !== "string" || config[key].length === 0) {
       throw new Error(`${key} is required in FITSPARK_RUNTIME_CONFIG_JSON.`);
@@ -72,6 +53,132 @@ export function parseRuntimeConfig(raw) {
   }
 
   return config;
+}
+
+function equipmentCatalog(records) {
+  const bySourceValue = new Map();
+
+  for (const record of records) {
+    const sourceValue = record.equipment_slug;
+    if (!sourceValue) continue;
+
+    const category =
+      sourceValue.includes("machine") ||
+      sourceValue.includes("treadmill") ||
+      sourceValue.includes("bike") ||
+      sourceValue.includes("trainer") ||
+      sourceValue.includes("row") ||
+      sourceValue.includes("stair")
+        ? "Machines"
+        : sourceValue.includes("bar") ||
+            sourceValue.includes("bell") ||
+            sourceValue.includes("plate") ||
+            sourceValue.includes("dumbbell") ||
+            sourceValue.includes("kettlebell") ||
+            sourceValue.includes("band")
+          ? "Free Weights"
+          : sourceValue === "bodyweight" ||
+              sourceValue.includes("roller") ||
+              sourceValue.includes("ball")
+            ? "Bodyweight"
+            : "Other";
+
+    const existing = bySourceValue.get(sourceValue) ?? {
+      slug: sourceValue,
+      sourceValue,
+      displayName: record.equipment_name,
+      category,
+      level: "beginner",
+      aliases: new Set([sourceValue]),
+      primaryMuscles: new Set(),
+      secondaryMuscles: new Set(),
+      imageUrls: new Set(),
+      exerciseCount: 0,
+      sourceCommit: SOURCE_COMMIT,
+    };
+
+    existing.aliases.add(existing.displayName.toLowerCase());
+    existing.aliases.add(record.equipment);
+    if (record.level === "intermediate" || record.level === "expert") {
+      existing.level = "intermediate";
+    }
+    for (const muscle of record.primary_muscles
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)) {
+      existing.primaryMuscles.add(muscle);
+    }
+    for (const muscle of record.secondary_muscles
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)) {
+      existing.secondaryMuscles.add(muscle);
+    }
+    existing.exerciseCount += 1;
+    for (const imageUrl of record.image_urls) existing.imageUrls.add(imageUrl);
+    bySourceValue.set(sourceValue, existing);
+  }
+
+  return [...bySourceValue.values()].map((item) => ({
+    ...item,
+    aliases: [...item.aliases],
+    primaryMuscles: [...item.primaryMuscles],
+    secondaryMuscles: [...item.secondaryMuscles],
+    imageUrls: [...item.imageUrls],
+  }));
+}
+
+async function syncEquipmentCatalog(config, records) {
+  const pool = new Pool({ connectionString: config.DATABASE_URL });
+  const items = equipmentCatalog(records);
+  try {
+    await pool.query("BEGIN");
+    for (const item of items) {
+      await pool.query(
+        `INSERT INTO equipment
+          (slug, source_value, display_name, category, level, aliases, primary_muscles, secondary_muscles, image_urls, exercise_count, source_commit, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP)
+         ON CONFLICT (source_value) DO UPDATE SET
+          slug = EXCLUDED.slug,
+          display_name = EXCLUDED.display_name,
+          category = EXCLUDED.category,
+          level = EXCLUDED.level,
+          aliases = EXCLUDED.aliases,
+          primary_muscles = EXCLUDED.primary_muscles,
+          secondary_muscles = EXCLUDED.secondary_muscles,
+          image_urls = EXCLUDED.image_urls,
+          exercise_count = EXCLUDED.exercise_count,
+          source_commit = EXCLUDED.source_commit,
+          updated_at = CURRENT_TIMESTAMP`,
+        [
+          item.slug,
+          item.sourceValue,
+          item.displayName,
+          item.category,
+          item.level,
+          item.aliases,
+          item.primaryMuscles,
+          item.secondaryMuscles,
+          item.imageUrls,
+          item.exerciseCount,
+          item.sourceCommit,
+        ],
+      );
+    }
+    if (items.length > 0) {
+      await pool.query(
+        "DELETE FROM equipment WHERE source_commit = $1 AND slug <> ALL($2::text[])",
+        [SOURCE_COMMIT, items.map((item) => item.slug)],
+      );
+    }
+    await pool.query("COMMIT");
+    return items.length;
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    throw error;
+  } finally {
+    await pool.end();
+  }
 }
 
 export function normalizeExercises(input) {
@@ -106,6 +213,7 @@ export function normalizeExercises(input) {
       `Category: ${exercise.category || "unspecified"}`,
       `Equipment type: ${equipment.equipmentType}`,
       `Equipment name: ${equipment.equipmentName}`,
+      `Equipment slug: ${equipment.equipmentSlug ?? "unclassified"}`,
       `Equipment aliases: ${equipment.equipmentAliases.join(", ")}`,
       `Primary muscles: ${primaryMuscles.join(", ") || "unspecified"}`,
       `Secondary muscles: ${secondaryMuscles.join(", ") || "none listed"}`,
@@ -126,6 +234,9 @@ export function normalizeExercises(input) {
       equipment: equipment.equipmentType,
       equipment_type: equipment.equipmentType,
       equipment_name: equipment.equipmentName,
+      ...(equipment.equipmentSlug
+        ? { equipment_slug: equipment.equipmentSlug }
+        : {}),
       equipment_aliases: equipment.equipmentAliases,
       primary_muscles: primaryMuscles.join(", "),
       secondary_muscles: secondaryMuscles.join(", "),
@@ -231,13 +342,7 @@ async function uploadImage(fetchImpl, token, bucket, sourceUrl) {
   return gcsImageUrl(bucket, objectName);
 }
 
-async function mirrorImages(fetchImpl, records) {
-  const bucket = process.env.FITSPARK_RAG_IMAGE_BUCKET;
-  if (!bucket) {
-    throw new Error(
-      "FITSPARK_RAG_IMAGE_BUCKET is required for image ingestion.",
-    );
-  }
+async function mirrorImages(fetchImpl, records, bucket) {
   const token = await getGoogleAccessToken(fetchImpl);
   const mirroredRecords = [];
   for (const record of records) {
@@ -315,7 +420,11 @@ export async function ingestExercises({
   fetchImpl = fetch,
 } = {}) {
   const sourceRecords = await fetchSource(fetchImpl);
-  const records = await mirrorImages(fetchImpl, sourceRecords);
+  const records = await mirrorImages(
+    fetchImpl,
+    sourceRecords,
+    config.RAG_IMAGE_BUCKET,
+  );
   for (let offset = 0; offset < records.length; offset += BATCH_SIZE) {
     await upsertBatch(
       fetchImpl,
@@ -323,13 +432,17 @@ export async function ingestExercises({
       records.slice(offset, offset + BATCH_SIZE),
     );
   }
+  const equipmentCount = await syncEquipmentCatalog(config, records);
   const verification = await verifyIndex(fetchImpl, config);
-  return { count: records.length, verification };
+  return { count: records.length, equipmentCount, verification };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = await ingestExercises();
   const hits = result.verification?.result?.hits ?? [];
   console.log(`Indexed ${result.count} exercise records.`);
+  console.log(
+    `Synced ${result.equipmentCount} equipment records to PostgreSQL.`,
+  );
   console.log(`Verification returned ${hits.length} matches.`);
 }

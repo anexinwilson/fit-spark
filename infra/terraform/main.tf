@@ -316,11 +316,6 @@ resource "google_cloud_run_v2_job" "rag_ingestion" {
             }
           }
         }
-
-        env {
-          name  = "FITSPARK_RAG_IMAGE_BUCKET"
-          value = google_storage_bucket.rag_images.name
-        }
       }
     }
   }

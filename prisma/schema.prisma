@@ -85,6 +85,24 @@ model UserEquipmentInventory {
   @@index([userId])
 }
 
+model Equipment {
+  slug          String   @id
+  sourceValue   String   @unique @map("source_value")
+  displayName   String   @map("display_name")
+  category      String
+  level         String
+  aliases       String[]
+  primaryMuscles   String[] @map("primary_muscles")
+  secondaryMuscles String[] @map("secondary_muscles")
+  imageUrls     String[] @map("image_urls")
+  exerciseCount Int      @default(0) @map("exercise_count")
+  sourceCommit  String   @map("source_commit")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("equipment")
+}
+
 model MuscleFatigueLog {
   id            String   @id @default(uuid())
   userId        String
