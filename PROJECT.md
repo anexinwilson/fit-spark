@@ -32,11 +32,11 @@
 
 ## Milestones
 
-| # | Name | Scope | Dependencies | Status |
-|---|------|-------|-------------|--------|
-| M1 | Redesign Loading Sequence & Live AI Token Streaming UI | Build loading UI, node execution stepper, auto-scrolling terminal box, and fix SSE parser in `workout-plan-form.tsx` | none | DONE |
-| M2 | Robust Error Handling, 429 Quota Limits & Mock Verification | Define `RateLimitQuotaExhaustedError`, update route handler error catching, build error alert UI with retry, and execute R2 mock verification | M1 | IN_PROGRESS |
-| M3 | Code Health, E2E Test Suite & Forensic Audit | Fix TS types, ESLint, Prettier, run Playwright test suite, and perform Forensic Audit | M2 | PLANNED |
+| #   | Name                                                        | Scope                                                                                                                                         | Dependencies | Status      |
+| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ----------- |
+| M1  | Redesign Loading Sequence & Live AI Token Streaming UI      | Build loading UI, node execution stepper, auto-scrolling terminal box, and fix SSE parser in `workout-plan-form.tsx`                          | none         | DONE        |
+| M2  | Robust Error Handling, 429 Quota Limits & Mock Verification | Define `RateLimitQuotaExhaustedError`, update route handler error catching, build error alert UI with retry, and execute R2 mock verification | M1           | DONE        |
+| M3  | Code Health, E2E Test Suite & Forensic Audit                | Fix TS types, ESLint, Prettier, run Playwright test suite, and perform Forensic Audit                                                         | M2           | IN_PROGRESS |
 
 ## Interface Contracts
 

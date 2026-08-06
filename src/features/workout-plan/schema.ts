@@ -26,26 +26,49 @@ export const workoutPlanDraftSchema = z.object({
 
 export type WorkoutPlanDraft = z.infer<typeof workoutPlanDraftSchema>;
 
+export type ExerciseDetail = {
+  name: string;
+  equipment: string;
+  setsAndReps: string;
+  notes?: string;
+};
+
 export type DailyWorkoutPlan = {
-  warmup?: string;
-  mainWorkout?: string;
-  cooldown?: string;
-  cardio?: string;
+  warmup?: ExerciseDetail[];
+  mainWorkout?: ExerciseDetail[];
+  cooldown?: ExerciseDetail[];
+  cardio?: ExerciseDetail[];
 };
 
 export type WeeklyWorkoutPlan = Record<string, DailyWorkoutPlan>;
 
+const exerciseDetailSchema = z.object({
+  name: z.string(),
+  equipment: z.string(),
+  setsAndReps: z.string(),
+  notes: z.string().optional(),
+});
+
 export const weeklyWorkoutPlanSchema = z.record(
   z.string(),
   z.object({
-    warmup: z.string().optional(),
-    mainWorkout: z.string().optional(),
-    cooldown: z.string().optional(),
-    cardio: z.string().optional(),
+    warmup: z.array(exerciseDetailSchema).optional(),
+    mainWorkout: z.array(exerciseDetailSchema).optional(),
+    cooldown: z.array(exerciseDetailSchema).optional(),
+    cardio: z.array(exerciseDetailSchema).optional(),
   }),
 );
+
+export type CoachInsight = {
+  coveredGroups: string[];
+  missingGroups: string[];
+  focusLabel: string;
+  coachMessage: string;
+  suggestedEquipment: string[];
+};
 
 export type WorkoutPlanResponse = {
   workoutPlan?: WeeklyWorkoutPlan;
   error?: string;
+  coachInsight?: CoachInsight | null;
 };

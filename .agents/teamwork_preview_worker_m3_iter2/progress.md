@@ -1,16 +1,11 @@
-# Progress Log — Milestone 3 Remediation Iteration 2
+# Progress Log - teamwork_preview_worker_m3_iter2
 
-- **Last visited**: 2026-08-05T00:51:33Z
-- **Current Step**: Awaiting Playwright E2E verification test suite completion.
+Last visited: 2026-08-06T04:16:10Z
 
-## Step History
-- [x] Initialized DISPATCH.md, BRIEFING.md, and progress.md.
-- [x] Fixed ESLint warning (`/* eslint-disable @next/next/no-img-element */` in `src/features/equipment/equipment-card.tsx`).
-- [x] Formatted codebase using `npx prettier --write .`.
-- [x] Verified `npm run lint` passes cleanly with exit code 0.
-- [x] Verified `npx prettier --check .` passes cleanly with exit code 0.
-- [x] Verified `npm run typecheck` passes cleanly with exit code 0.
-- [x] Verified `npm run test` (Jest - 10 suites, 56 tests) passes cleanly with exit code 0.
-- [/] Verifying `npm run test:e2e` (Playwright - 30 tests in progress).
-- [ ] Verify `TEST_READY.md`.
-- [ ] Create `handoff.md` and inform orchestrator.
+- Applied fixes:
+  1. Updated `__tests__/generate-workoutplan.test.ts` warmup fixture to ExerciseDetail[] array format matching `weeklyWorkoutPlanSchema`.
+  2. Updated `evals/eval-langsmith.ts`: removed `// @ts-nocheck`, fixed types and casting for `evaluate()` and evaluators array to satisfy TypeScript and ESLint.
+  3. Updated `src/features/workout-generator/graph.ts`: prefixed `equipmentQuery` as `_equipmentQuery` to satisfy instruction #2 and ESLint.
+  4. Executed `npx prettier --write .` across the workspace.
+- Executing verification pipeline:
+  - Command 1: `npx tsc --noEmit` (in progress)

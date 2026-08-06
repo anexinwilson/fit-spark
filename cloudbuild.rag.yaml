@@ -6,15 +6,48 @@ steps:
       - --file
       - Dockerfile.rag
       - --tag
-      - ${_IMAGE_URI}
+      - us-central1-docker.pkg.dev/$PROJECT_ID/fit-spark/fit-spark-rag-indexer:latest
       - .
 
-images:
-  - ${_IMAGE_URI}
+  - id: Push RAG ingestion image
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - us-central1-docker.pkg.dev/$PROJECT_ID/fit-spark/fit-spark-rag-indexer:latest
 
-serviceAccount: projects/${PROJECT_ID}/serviceAccounts/fit-spark-build@${PROJECT_ID}.iam.gserviceaccount.com
+  - id: Update Cloud Run Job
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    args:
+      - gcloud
+      - run
+      - jobs
+      - update
+      - fit-spark-rag-indexer
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/fit-spark/fit-spark-rag-indexer:latest
+      - --region=us-central1
+      - --project=$PROJECT_ID
+      - --quiet
+
+  - id: Execute ingestion
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    args:
+      - gcloud
+      - run
+      - jobs
+      - execute
+      - fit-spark-rag-indexer
+      - --region=us-central1
+      - --project=$PROJECT_ID
+      - --wait
+      - --quiet
+
+images:
+  - us-central1-docker.pkg.dev/$PROJECT_ID/fit-spark/fit-spark-rag-indexer:latest
+
+serviceAccount: projects/$PROJECT_ID/serviceAccounts/fit-spark-build@$PROJECT_ID.iam.gserviceaccount.com
 
 options:
   logging: CLOUD_LOGGING_ONLY
 
-timeout: 1200s
+# Allow time for Docker build + image push + full ingestion run (873 exercises + GCS uploads)
+timeout: 3600s

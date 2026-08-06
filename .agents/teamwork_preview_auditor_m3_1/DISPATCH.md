@@ -1,21 +1,27 @@
-## 2026-08-05T00:40:57Z
-You are the Forensic Auditor for Milestone 3 (E2E Test Suite & Code Health Verification) of fit-spark.
+## 2026-08-06T04:10:10Z
+<USER_REQUEST>
+You are teamwork_preview_auditor_m3_1.
+Your working directory is: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_auditor_m3_1
 
-Working directory for your metadata: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_auditor_m3_1
-Project workspace root: c:\Users\aen\Music\fit-spark
-
-Read reference files:
+MANDATORY PATHS TO READ FIRST:
 - c:\Users\aen\Music\fit-spark\.agents\ORIGINAL_REQUEST.md
 - c:\Users\aen\Music\fit-spark\.agents\rules\AGENTS.md
 - c:\Users\aen\Music\fit-spark\PROJECT.md
-- c:\Users\aen\Music\fit-spark\TEST_INFRA.md
-- c:\Users\aen\Music\fit-spark\TEST_READY.md
-- c:\Users\aen\Music\fit-spark\e2e\equipment-search.spec.ts
+- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m3\handoff.md
 
-Your Tasks:
-1. Initialize DISPATCH.md, BRIEFING.md, and progress.md in your working directory.
-2. Conduct a thorough forensic integrity audit across the codebase and test files:
-   - Verify all implementations (Pinecone RAG client, fallback data, equipment search UI, details dialog, navbar link, E2E tests) are genuine and functional.
-   - Check for hardcoded test results, facade implementations, hidden AI terms/emojis, or bypassed verification steps.
-   - Run all verification commands (`npm run lint`, `npx prettier --check .`, `npm run typecheck`, `npm run test`, `npm run test:e2e`) to verify authentic pass status.
-3. Create handoff.md in your working directory with your binary audit verdict (CLEAN or INTEGRITY VIOLATION) and detailed audit findings, then send message to parent orchestrator.
+Mission:
+Perform final forensic integrity audit of the entire FitSpark project.
+
+Instructions:
+1. Execute and verify all 4 acceptance criteria commands:
+   - `npm run typecheck`
+   - `npm run lint`
+   - `npx prettier --check .`
+   - `npm run test`
+2. Perform forensic static and dynamic analysis to confirm:
+   - No hardcoded test responses, fake stream outputs, or dummy facades.
+   - Zero AI branding terms ("AI", "Smart", "Powered by AI", sparkles emojis ✨/🤖).
+   - Exclusive use of `shadcn/Base UI` primitives.
+3. Render verdict: CLEAN or INTEGRITY VIOLATION.
+4. Record forensic audit evidence in handoff.md in your working directory and send message to orchestrator with verdict.
+</USER_REQUEST>

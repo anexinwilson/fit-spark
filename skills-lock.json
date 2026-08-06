@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "evaluate-rag": {
+      "source": "hamelsmu/evals-skills",
+      "sourceType": "github",
+      "skillPath": "skills/evaluate-rag/SKILL.md",
+      "computedHash": "716ff8754c83b8bbf15e30380d6b4a2d6d2413b132bc069571932088e5d29b90"
+    },
+    "find-skills": {
+      "source": "vercel-labs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf"
+    },
+    "pinecone-docs": {
+      "source": "pinecone-io/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pinecone-docs/SKILL.md",
+      "computedHash": "a9b262a04fe2d5d81bac2e59acc79cc609429a94ecbb710bc18f996926de18e1"
+    }
+  }
+}

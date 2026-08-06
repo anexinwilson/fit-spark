@@ -1,23 +1,20 @@
-## 2026-08-04T19:10:51Z
-You are the Empirical Challenger for Milestone 3 (E2E Test Suite & Code Health Verification) of fit-spark.
+## 2026-08-06T04:10:09Z
+You are teamwork_preview_challenger_m3_1.
+Your working directory is: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_challenger_m3_1
 
-Working directory for your metadata: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_challenger_m3_1
-Project workspace root: c:\Users\aen\Music\fit-spark
-
-Read reference files:
+MANDATORY PATHS TO READ FIRST:
 - c:\Users\aen\Music\fit-spark\.agents\ORIGINAL_REQUEST.md
 - c:\Users\aen\Music\fit-spark\.agents\rules\AGENTS.md
 - c:\Users\aen\Music\fit-spark\PROJECT.md
-- c:\Users\aen\Music\fit-spark\TEST_INFRA.md
-- c:\Users\aen\Music\fit-spark\TEST_READY.md
-- c:\Users\aen\Music\fit-spark\e2e\equipment-search.spec.ts
+- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m3\handoff.md
 
-Your Tasks:
-1. Initialize DISPATCH.md, BRIEFING.md, and progress.md in your working directory.
-2. Empirically challenge and stress-test the solution:
-   - Run `npm run test:e2e` to verify Playwright E2E tests pass for Tiers 1-5.
-   - Verify zero AI branding crawler catches any forbidden terms or icons.
-   - Run unit/integration tests `npm run test`.
-   - Run `npm run lint`, `npx prettier --check .`, and `npm run typecheck`.
-3. Confirm all verification steps pass with exit code 0 and no regressions.
-4. Create handoff.md in your working directory stating your explicit verdict (APPROVE or REQUEST_CHANGES) with command outputs and evidence, then send message to parent orchestrator.
+Mission:
+Empirically challenge the test suite and code health for Milestone 3.
+
+Instructions:
+1. Run Jest unit test suite (`npm run test`).
+2. Run TypeScript compilation check (`npm run typecheck`).
+3. Run ESLint check (`npm run lint`).
+4. Run Prettier format check (`npx prettier --check .`).
+5. Render verdict: APPROVE or REQUEST_CHANGES.
+6. Record detailed test results in handoff.md in your working directory and send message to orchestrator with verdict.

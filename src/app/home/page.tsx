@@ -55,24 +55,37 @@ export default async function HomePage() {
                 Today&apos;s workout
               </h2>
               <div className="text-muted-foreground mt-5 space-y-4 leading-7">
-                {todayWorkout.warmup && (
+                {todayWorkout.warmup && todayWorkout.warmup.length > 0 && (
                   <p>
-                    <strong>Warm-up:</strong> {todayWorkout.warmup}
+                    <strong>Warm-up:</strong>{" "}
+                    {todayWorkout.warmup
+                      .map((e) => `${e.name} (${e.setsAndReps})`)
+                      .join(", ")}
                   </p>
                 )}
-                {todayWorkout.mainWorkout && (
+                {todayWorkout.mainWorkout &&
+                  todayWorkout.mainWorkout.length > 0 && (
+                    <p>
+                      <strong>Main workout:</strong>{" "}
+                      {todayWorkout.mainWorkout
+                        .map((e) => `${e.name} (${e.setsAndReps})`)
+                        .join(", ")}
+                    </p>
+                  )}
+                {todayWorkout.cardio && todayWorkout.cardio.length > 0 && (
                   <p>
-                    <strong>Main workout:</strong> {todayWorkout.mainWorkout}
+                    <strong>Cardio:</strong>{" "}
+                    {todayWorkout.cardio
+                      .map((e) => `${e.name} (${e.setsAndReps})`)
+                      .join(", ")}
                   </p>
                 )}
-                {todayWorkout.cardio && (
+                {todayWorkout.cooldown && todayWorkout.cooldown.length > 0 && (
                   <p>
-                    <strong>Cardio:</strong> {todayWorkout.cardio}
-                  </p>
-                )}
-                {todayWorkout.cooldown && (
-                  <p>
-                    <strong>Cool-down:</strong> {todayWorkout.cooldown}
+                    <strong>Cool-down:</strong>{" "}
+                    {todayWorkout.cooldown
+                      .map((e) => `${e.name} (${e.setsAndReps})`)
+                      .join(", ")}
                   </p>
                 )}
               </div>

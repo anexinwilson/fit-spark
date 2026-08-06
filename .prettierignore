@@ -7,3 +7,5 @@ infra/terraform/.terraform
 package-lock.json
 README.md
 .agents
+services/ai-planner/.venv
+.venv

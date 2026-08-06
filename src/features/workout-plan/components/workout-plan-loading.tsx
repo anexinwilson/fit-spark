@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { CheckCircle2, Circle, Terminal, Activity, Layers } from "lucide-react";
+import { CheckCircle2, Circle, Layers, Activity } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
 export interface LangGraphNode {
@@ -46,13 +45,13 @@ export const WORKFLOW_NODES: LangGraphNode[] = [
 interface WorkoutPlanLoadingProps {
   activeNodeId?: string;
   statusMessage?: string;
-  streamContent: string;
+  logLines?: string[];
 }
 
 export function WorkoutPlanLoading({
   activeNodeId = "equipmentResolver",
   statusMessage = "Building your workout plan...",
-  streamContent,
+  logLines = [],
 }: WorkoutPlanLoadingProps) {
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const terminalContainerRef = useRef<HTMLDivElement>(null);
@@ -70,13 +69,22 @@ export function WorkoutPlanLoading({
   );
   const currentIndex = activeNodeIndex >= 0 ? activeNodeIndex : 0;
 
-  // Auto-scroll terminal box to bottom on stream update
+  // Auto-scroll terminal to bottom on new log
   useEffect(() => {
     if (terminalContainerRef.current) {
       terminalContainerRef.current.scrollTop =
         terminalContainerRef.current.scrollHeight;
     }
-  }, [streamContent]);
+  }, [logLines]);
+
+  // Colour-code log lines by node prefix
+  function getLineColor(line: string): string {
+    if (line.includes("[equipmentResolver]")) return "text-violet-400";
+    if (line.includes("[exerciseRetriever]")) return "text-sky-400";
+    if (line.includes("[planBuilder]")) return "text-emerald-400";
+    if (line.includes("[safetyEvaluator]")) return "text-amber-400";
+    return "text-slate-300";
+  }
 
   return (
     <div className="space-y-6">
@@ -118,7 +126,7 @@ export function WorkoutPlanLoading({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-                <Layers className="size-3.5" /> Execution Pipeline Stepper
+                <Layers className="size-3.5" /> Execution Pipeline
               </h3>
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 Step {currentIndex + 1} of {WORKFLOW_NODES.length}
@@ -202,20 +210,17 @@ export function WorkoutPlanLoading({
 
           <Separator />
 
-          {/* Real-Time Token Stream Terminal Box */}
+          {/* Interactive Agent Activity Terminal */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Terminal className="size-4 text-slate-700 dark:text-slate-300" />
-                <h3 className="text-xs font-semibold tracking-wider text-slate-700 uppercase dark:text-slate-300">
-                  Live Token Stream Terminal
-                </h3>
-              </div>
+              <h3 className="text-xs font-semibold tracking-wider text-slate-700 uppercase dark:text-slate-300">
+                Agent Activity Log
+              </h3>
               <Badge
                 variant="outline"
                 className="border-slate-700 bg-slate-900 font-mono text-[10px] text-slate-400"
               >
-                {streamContent.length} characters
+                {logLines.length} events
               </Badge>
             </div>
 
@@ -229,7 +234,7 @@ export function WorkoutPlanLoading({
                     <div className="size-2.5 rounded-full bg-emerald-500/80" />
                   </div>
                   <span className="ml-2 font-mono text-xs text-slate-400">
-                    workout-generator --stream
+                    fitspark-agent --live
                   </span>
                 </div>
                 <div className="flex items-center gap-2 font-mono text-[10px] text-emerald-400/90">
@@ -237,51 +242,55 @@ export function WorkoutPlanLoading({
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                     <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
                   </span>
-                  STREAMING
+                  LIVE
                 </div>
               </div>
 
-              {/* Terminal Content Area */}
+              {/* Terminal Content */}
               <div
                 ref={terminalContainerRef}
-                className="h-[220px] scrollbar-thin scrollbar-thumb-slate-800 overflow-y-auto p-4 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap text-emerald-400/90 selection:bg-emerald-950 selection:text-emerald-200"
+                className="h-[200px] overflow-y-auto p-4 font-mono text-xs leading-relaxed"
               >
-                {streamContent ? (
-                  <>
-                    {streamContent}
-                    <span className="ml-0.5 inline-block h-4 w-2 animate-pulse bg-emerald-400 align-middle" />
-                  </>
-                ) : (
+                {logLines.length === 0 ? (
                   <span className="text-slate-500 italic">
-                    Initializing model token stream...
+                    Waiting for agent to start
+                    <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-slate-500 align-middle" />
                   </span>
+                ) : (
+                  logLines.map((line, i) => {
+                    const isLast = i === logLines.length - 1;
+                    return (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="mt-px shrink-0 text-slate-600">›</span>
+                        <span className={getLineColor(line)}>
+                          {line}
+                          {isLast && (
+                            <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-current align-middle opacity-70" />
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })
                 )}
                 <div ref={terminalEndRef} />
               </div>
             </div>
-          </div>
 
-          {/* Skeleton Schedule Loader Preview */}
-          <div className="space-y-3 pt-2">
-            <h4 className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-              Schedule Construction Preview
-            </h4>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="space-y-2 rounded-lg border border-slate-200/60 p-3.5 dark:border-slate-800">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-3/4" />
-              </div>
-              <div className="space-y-2 rounded-lg border border-slate-200/60 p-3.5 dark:border-slate-800">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-4/5" />
-              </div>
-              <div className="space-y-2 rounded-lg border border-slate-200/60 p-3.5 dark:border-slate-800">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-2/3" />
-              </div>
+            {/* Legend */}
+            <div className="flex flex-wrap gap-3 pt-1">
+              {[
+                { label: "equipmentResolver", color: "bg-violet-400" },
+                { label: "exerciseRetriever", color: "bg-sky-400" },
+                { label: "planBuilder", color: "bg-emerald-400" },
+                { label: "safetyEvaluator", color: "bg-amber-400" },
+              ].map(({ label, color }) => (
+                <div key={label} className="flex items-center gap-1.5">
+                  <div className={`size-2 rounded-full ${color}`} />
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {label}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </CardContent>

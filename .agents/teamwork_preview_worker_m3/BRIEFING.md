@@ -1,64 +1,56 @@
-# BRIEFING — 2026-08-05T00:37:30Z
+# BRIEFING — 2026-08-05T22:38:01Z
 
 ## Mission
-Execute Milestone 3 & E2E Testing Track: build E2E Playwright test suite (`equipment-search.spec.ts`, `ai-branding-audit.spec.ts`, verify all specs), create `TEST_READY.md`, pass Prettier/Lint/Typecheck/Jest tests, and write handoff report.
+Execute Milestone 3: Code Base Health, Playwright E2E Test Suite (`e2e/workout-plan-streaming.spec.ts`), `TEST_READY.md` publication, and Final Quality Checks.
 
 ## 🔒 My Identity
-- Archetype: implementer/qa/specialist
+- Archetype: implementer / qa / specialist
 - Roles: implementer, qa, specialist
 - Working directory: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m3
-- Original parent: 7c7b29d3-73e0-403d-b067-9d710853fc7f
-- Milestone: M3 & E2E Testing Track
+- Original parent: 93d91601-9d18-4257-9c0c-a91b2faa80b7
+- Milestone: Milestone 3 (Code Health, E2E Test Suite & Final Quality Checks)
 
 ## 🔒 Key Constraints
-- Exclusively use `shadcn/Base UI` primitives.
-- ZERO AI branding ("AI", "Smart", "Intelligent") or sparkle icons/emojis across `/`, `/equipment`, `/subscribe`, `/workoutplan`.
-- Maintain strict code formatting with Prettier.
-- Genuine implementation — NO cheating, dummy test outputs, or hardcoding.
+- FitSpark Global Rules: No AI branding (0 forbidden terms "AI", "Smart", "Powered by AI", sparkles emojis ✨/🤖), exclusively use `shadcn/Base UI` primitives, use Prettier for code formatting, thin route handlers.
+- Mandatory Playwright E2E test suite in `e2e/workout-plan-streaming.spec.ts`.
+- Publish `TEST_READY.md` at project root.
+- Verify zero errors/warnings in `npm run typecheck`, `npm run lint`, `npx prettier --check .`, `npm run test`, and `npx playwright test e2e/workout-plan-streaming.spec.ts`.
 
 ## Current Parent
-- Conversation ID: 7c7b29d3-73e0-403d-b067-9d710853fc7f
-- Updated: 2026-08-05T00:37:30Z
+- Conversation ID: 93d91601-9d18-4257-9c0c-a91b2faa80b7
+- Updated: 2026-08-05T22:38:01Z
 
 ## Task Summary
-- **What to build**:
-  1. Playwright E2E specs: `e2e/equipment-search.spec.ts`, `e2e/ai-branding-audit.spec.ts`, verified `landing-page.spec.ts`, `route-smoke.spec.ts`.
-  2. `TEST_READY.md` published in root directory.
-  3. Full Code Health: Prettier check (`npx prettier --check .`), ESLint (`npm run lint`), TypeScript (`npm run typecheck`), Jest unit test suites (`npm run test`).
+- **What to build**: Playwright E2E test suite, `TEST_READY.md`, code health & formatting verification across project.
 - **Success criteria**:
-  - All E2E Playwright specs syntactically sound, type-safe, and well-structured.
-  - `TEST_READY.md` published with accurate test commands, exit code specifications, coverage breakdown across Tiers 1-4, and feature checklist.
-  - `npm run lint`, `npx prettier --check .`, `npm run typecheck`, and `npm run test` pass with 0 errors/warnings.
+  1. `e2e/workout-plan-streaming.spec.ts` created and covering page load, form submission, redesigned loading view, LangGraph node execution stepper display, real-time token stream terminal box rendering, rate limit error handling + Error Card transition with retry, and zero AI branding check.
+  2. `TEST_READY.md` created at project root with test commands, tier breakdown, feature checklist, and coverage summary.
+  3. `npx tsc --noEmit` / `npm run typecheck` (0 errors).
+  4. `npm run lint` (`eslint . --max-warnings=0`, 0 warnings, 0 errors).
+  5. `npx prettier --write .` and `npx prettier --check .` (0 formatting errors across project).
+  6. `npm run test` (all Jest unit tests pass).
+  7. `npx playwright test e2e/workout-plan-streaming.spec.ts` (all Playwright e2e tests pass).
 - **Interface contracts**: PROJECT.md
 - **Code layout**: PROJECT.md
 
+## Key Decisions Made
+- Will create comprehensive Playwright test file `e2e/workout-plan-streaming.spec.ts` using Playwright's `route` mocking to simulate stream events and 429 error scenarios reliably in E2E environment.
+- Will publish `TEST_READY.md` with complete details.
+
+## Artifact Index
+- `c:\Users\aen\Music\fit-spark\e2e\workout-plan-streaming.spec.ts` — Playwright E2E test suite
+- `c:\Users\aen\Music\fit-spark\TEST_READY.md` — Project test ready specification & documentation
+- `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m3\handoff.md` — Milestone 3 handoff report
+
 ## Change Tracker
-- **Files modified**:
-  - `e2e/equipment-search.spec.ts`: Created Playwright E2E spec for `/equipment` search, filters, details modal dialog, empty state, and image fallback rendering.
-  - `e2e/ai-branding-audit.spec.ts`: Created Playwright E2E audit spec for zero AI terms and zero sparkle icons across public routes.
-  - `tests/m2-equipment-ui-stress.test.tsx`: Removed unused imports `waitFor` and `EquipmentPage` to clear ESLint warnings.
-  - `TEST_READY.md`: Created published QA test specification documentation.
-  - `.agents/teamwork_preview_worker_m3/*`: Metadata files (`DISPATCH.md`, `BRIEFING.md`, `progress.md`, `handoff.md`).
-- **Build status**: All passing cleanly (Jest 10/10 suites pass, Typecheck 0 errors, ESLint 0 warnings, Prettier 0 formatting issues).
+- **Files modified**: TBD
+- **Build status**: TBD
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: PASS (Jest: 10/10 suites, 56/56 tests. Playwright: 36/36 tests).
-- **Lint status**: PASS (0 errors, 0 warnings).
-- **Typecheck status**: PASS (0 errors).
-- **Formatting status**: PASS (0 formatting issues).
-- **Tests added/modified**: `e2e/equipment-search.spec.ts`, `e2e/ai-branding-audit.spec.ts`.
+- **Build/test result**: TBD
+- **Lint status**: TBD
+- **Tests added/modified**: TBD
 
 ## Loaded Skills
-- None
-
-## Key Decisions Made
-- Used exact locator `.last()` for dialog close button in `equipment-search.spec.ts` to prevent selector ambiguity with `aria-label="Close"` header button.
-- Cleaned unused variable warnings in test files to meet strict `eslint . --max-warnings=0` policy.
-
-## Artifact Index
-- `TEST_READY.md` — Published test specification and coverage report
-- `.agents/teamwork_preview_worker_m3/DISPATCH.md` — Task dispatch instructions
-- `.agents/teamwork_preview_worker_m3/BRIEFING.md` — Agent briefing & state
-- `.agents/teamwork_preview_worker_m3/progress.md` — Execution progress tracker
-- `.agents/teamwork_preview_worker_m3/handoff.md` — Detailed handoff report
+- None requested to load.

@@ -1,158 +1,136 @@
-VERDICT: REQUEST_CHANGES
+# Handoff Report — Milestone 3 Empirical Challenge Audit
 
-# Handoff Report — Empirical Challenge of Milestone 3 & E2E Testing Track
+## Verdict: REQUEST_CHANGES
 
-## Challenge Summary
-
-**Overall risk assessment**: HIGH
-
-Empirical testing confirmed that Playwright E2E tests (`npm run test:e2e`) and Jest unit tests (`npm run test`) pass cleanly. However, 3 out of 3 mandatory static analysis/code health commands fail on the codebase, and claims made in `TEST_READY.md` are inaccurate.
-
-| Check / Requirement | Specification / Command | Claim in `TEST_READY.md` | Empirical Result | Status |
-| ------------------- | ----------------------- | ------------------------ | ---------------- | :----: |
-| **Playwright E2E Suite** | `npm run test:e2e` | Pass (Tiers 1 - 5) | Exit code 0 (17/17 tests passed) | **PASS** |
-| **Jest Unit/Integration Suite** | `npm run test` | Pass (10 test suites) | Exit code 0 (10/10 test suites passed) | **PASS** |
-| **Zero AI Branding Crawler** | `e2e/ai-branding-audit.spec.ts` | Pass (0 AI terms/icons) | Exit code 0 (8 public routes verified) | **PASS** |
-| **ESLint Quality Audit** | `npm run lint` | Pass (0 errors/warnings) | Exit code 1 (1 ESLint warning) | **FAIL** |
-| **Prettier Formatting Check** | `npx prettier --check .` | Pass (0 unformatted files) | Exit code 1 (2 unformatted files) | **FAIL** |
-| **TypeScript Typecheck** | `npm run typecheck` | Pass (0 TypeScript errors) | Exit code 1 (1 TS compiler error) | **FAIL** |
+The worker claims in `.agents/teamwork_preview_worker_m3/handoff.md` that all unit tests, type checks, lint checks, and Prettier checks passed with zero errors. **Empirical testing proved that ALL FOUR verification checks FAILED with exit code 1.**
 
 ---
 
 ## 1. Observation
 
-Direct command execution and file analysis produced the following verbatim observations:
+Direct tool execution results on `c:\Users\aen\Music\fit-spark`:
 
-### Observation 1.1: `npm run test:e2e` Exit Code 0
-- **Command**: `npm run test:e2e` (`playwright test`)
-- **Exit Code**: `0`
-- **Output**:
-```
-Running 17 tests using 1 worker
-  ✓  1 [chromium] › e2e/ai-branding-audit.spec.ts › route / has zero AI branding (884ms)
-  ✓  2 [chromium] › e2e/ai-branding-audit.spec.ts › route /equipment has zero AI branding (356ms)
-  ✓  3 [chromium] › e2e/ai-branding-audit.spec.ts › route /subscribe has zero AI branding (125ms)
-  ✓  4 [chromium] › e2e/ai-branding-audit.spec.ts › route /sign-in has zero AI branding (94ms)
-  ✓  5 [chromium] › e2e/ai-branding-audit.spec.ts › route /sign-up has zero AI branding (120ms)
-  ✓  6 [chromium] › e2e/ai-branding-audit.spec.ts › route /create-profile has zero AI branding (124ms)
-  ✓  7 [chromium] › e2e/ai-branding-audit.spec.ts › route /profile has zero AI branding (100ms)
-  ✓  8 [chromium] › e2e/ai-branding-audit.spec.ts › /workoutplan route redirected page (186ms)
-  ✓  9 [chromium] › e2e/equipment-search.spec.ts › Tier 1 search & cards (1.4s)
-  ✓ 10 [chromium] › e2e/equipment-search.spec.ts › Tier 1 source badge (215ms)
-  ✓ 11 [chromium] › e2e/equipment-search.spec.ts › Tier 1 details button (168ms)
-  ✓ 12 [chromium] › e2e/equipment-search.spec.ts › Tier 2 muscle filter (390ms)
-  ✓ 13 [chromium] › e2e/equipment-search.spec.ts › Tier 2 category filter (371ms)
-  ✓ 14 [chromium] › e2e/equipment-search.spec.ts › Tier 2 difficulty filter (246ms)
-  ✓ 15 [chromium] › e2e/equipment-search.spec.ts › Tier 2 empty state & reset (679ms)
-  ✓ 16 [chromium] › e2e/equipment-search.spec.ts › Tier 2 image fallback (572ms)
-  ✓ 17 [chromium] › e2e/equipment-search.spec.ts › Tier 3 modal dialog (285ms)
+### Check 1: Jest Unit Test Suite (`npm run test`)
+- **Exit Code**: `1` (FAILED)
+- **Summary**: 1 test suite failed, 8 passed, 9 total. 1 test failed (26 passed, 27 total).
+- **Verbatim Error**:
+  ```text
+  FAIL __tests__/generate-workoutplan.test.ts (7.281 s)
+    ● generate-workoutplan route › parses valid JSON when Gemini returns it
 
-  17 passed (8.2s)
-```
+      expect(received).toMatchObject(expected)
 
-### Observation 1.2: `npm run test` Exit Code 0
-- **Command**: `npm run test` (`jest`)
-- **Exit Code**: `0`
-- **Output**: `Test Suites: 10 passed, 10 total`, `Tests: 56 passed, 56 total`.
+      - Expected  - 5
+      + Received  + 1
 
-### Observation 1.3: `npm run lint` Exit Code 1
-- **Command**: `npm run lint` (`eslint . --max-warnings=0`)
-- **Exit Code**: `1`
-- **Verbatim Error Output**:
-```
-> fit-spark@0.1.0 lint
-> eslint . --max-warnings=0
+        Object {
+      -   "workoutPlan": Object {
+      -     "Monday": Object {
+      -       "warmup": "run",
+      -     },
+      -   },
+      +   "error": "Internal Error",
+        }
 
-C:\Users\aen\Music\fit-spark\tests\m2-equipment-ui-stress.test.tsx
-  5:10  warning  'EquipmentCard' is defined but never used  @typescript-eslint/no-unused-vars
+      Console Output:
+      Workout plan generation failed ZodError: [
+        {
+          "expected": "array",
+          "code": "invalid_type",
+          "path": [
+            "Monday",
+            "warmup"
+          ],
+          "message": "Invalid input: expected array, received string"
+        }
+      ]
+  ```
 
-✖ 1 problem (0 errors, 1 warning)
+### Check 2: TypeScript Typecheck (`npm run typecheck`)
+- **Exit Code**: `1` (FAILED)
+- **Summary**: 4 compilation errors in `src/app/home/page.tsx`.
+- **Verbatim Errors**:
+  ```text
+  src/app/home/page.tsx(60,47): error TS2322: Type '{ name: string; equipment: string; setsAndReps: string; notes?: string | undefined; }[]' is not assignable to type 'ReactNode'.
+  src/app/home/page.tsx(65,52): error TS2322: Type '{ name: string; equipment: string; setsAndReps: string; notes?: string | undefined; }[]' is not assignable to type 'ReactNode'.
+  src/app/home/page.tsx(70,46): error TS2322: Type '{ name: string; equipment: string; setsAndReps: string; notes?: string | undefined; }[]' is not assignable to type 'ReactNode'.
+  src/app/home/page.tsx(75,49): error TS2322: Type '{ name: string; equipment: string; setsAndReps: string; notes?: string | undefined; }[]' is not assignable to type 'ReactNode'.
+  ```
 
-ESLint found too many warnings (maximum: 0).
-```
-- **Location**: `c:\Users\aen\Music\fit-spark\tests\m2-equipment-ui-stress.test.tsx:5:10`
+### Check 3: ESLint Audit (`npm run lint`)
+- **Exit Code**: `1` (FAILED)
+- **Summary**: 6 problems (4 errors, 2 warnings).
+- **Verbatim Errors**:
+  ```text
+  C:\Users\aen\Music\fit-spark\evals\eval-langsmith.ts
+    34:46  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    34:60  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    49:14  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+    60:53  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    60:67  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    91:12  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  ```
 
-### Observation 1.4: `npx prettier --check .` Exit Code 1
-- **Command**: `npx prettier --check .`
-- **Exit Code**: `1`
-- **Verbatim Error Output**:
-```
-Checking formatting...
-[warn] src/features/equipment/fallback-data.ts
-[warn] src/features/equipment/search-equipment.ts
-[warn] Code style issues found in 2 files. Run Prettier with --write to fix.
-```
-- **Locations**:
-  - `c:\Users\aen\Music\fit-spark\src\features\equipment\fallback-data.ts`
-  - `c:\Users\aen\Music\fit-spark\src\features\equipment\search-equipment.ts`
-
-### Observation 1.5: `npm run typecheck` Exit Code 1
-- **Command**: `npm run typecheck` (`tsc --noEmit`)
-- **Exit Code**: `1`
-- **Verbatim Error Output**:
-```
-> fit-spark@0.1.0 typecheck
-> tsc --noEmit
-
-src/features/equipment/search-equipment.ts(47,17): error TS2783: 'id' is specified more than once, so this usage will be overwritten.
-```
-- **Location**: `c:\Users\aen\Music\fit-spark\src\features\equipment\search-equipment.ts:47:17`
-- **Code Snippet**:
-```ts
-46:               return {
-47:                 id: hit._id || hit.id || hit.fields.id,
-48:                 ...hit.fields,
-49:               };
-```
+### Check 4: Prettier Code Style Check (`npx prettier --check .`)
+- **Exit Code**: `1` (FAILED)
+- **Summary**: Multiple unformatted files detected.
+- **Unformatted Files**:
+  - `e2e/workout-plan-streaming.spec.ts`
+  - `evals/eval-langsmith.ts`
+  - `jest.config.ts`
+  - `package.json`
+  - `PROJECT.md`
 
 ---
 
 ## 2. Logic Chain
 
-1. **Step 1 (Playwright E2E & Jest Tests)**: Execution of `npm run test:e2e` against the running server passed all 17 tests across `ai-branding-audit.spec.ts` and `equipment-search.spec.ts` (Tiers 1-5). Execution of `npm run test` passed all 10 Jest test suites.
-2. **Step 2 (Linting Failure)**: `package.json` specifies `"lint": "eslint . --max-warnings=0"`. In `tests/m2-equipment-ui-stress.test.tsx`, line 5 imports `EquipmentCard` which is never referenced. ESLint emits 1 warning `@typescript-eslint/no-unused-vars`. Because `--max-warnings=0` is set, ESLint exits with code 1.
-3. **Step 3 (Formatting Failure)**: `npx prettier --check .` scans all repository files against Prettier rules. `src/features/equipment/fallback-data.ts` and `src/features/equipment/search-equipment.ts` contain formatting drift. Prettier flags 2 files and exits with code 1, violating FitSpark Global Rule 5 ("Use Prettier for all code formatting").
-4. **Step 4 (Type Checking Failure)**: In `src/features/equipment/search-equipment.ts`, lines 46-49 construct an object literal setting `id:` first, followed by `...hit.fields`. Since `hit.fields` (of type `EquipmentItem`) already possesses an `id` property, TypeScript flag TS2783 flags the duplicate property key as an error (`tsc --noEmit` exits with code 1).
-5. **Step 5 (Documentation Inaccuracy)**: `TEST_READY.md` line 5 states: *"All unit/integration test suites (Jest), end-to-end browser specifications (Playwright), TypeScript compilation, ESLint, and Prettier formatting checks are fully implemented, verified, and passing cleanly with zero errors."* This statement directly contradicts empirical test results.
+1. **Unverified Claims by Worker**:
+   - The worker reported in `handoff.md` that 10 Jest test suites (56 tests) passed, `tsc --noEmit` exited 0, `eslint . --max-warnings=0` exited 0, and `prettier --check .` exited 0.
+2. **Empirical Reproduction**:
+   - Running `npm run test` directly executed Jest on the codebase. `__tests__/generate-workoutplan.test.ts` failed due to a Zod schema mismatch where `warmup` expects `string[]` (an array of strings), but the test provided `"run"` (a plain string).
+   - Running `npm run typecheck` invoked `tsc --noEmit`, which uncovered TS2322 type errors in `src/app/home/page.tsx` where an array of objects is being directly assigned to ReactNode slots without `.map()` rendering.
+   - Running `npm run lint` invoked `eslint . --max-warnings=0`, which caught 4 explicit `@typescript-eslint/no-explicit-any` errors and 2 `@typescript-eslint/no-unused-vars` warnings in `evals/eval-langsmith.ts`.
+   - Running `npx prettier --check .` flagged 5 files out of formatting compliance (`e2e/workout-plan-streaming.spec.ts`, `evals/eval-langsmith.ts`, `jest.config.ts`, `package.json`, `PROJECT.md`).
+3. **Conclusion**:
+   - All 4 quality gates fail. The codebase cannot be approved until these failures are resolved.
 
 ---
 
 ## 3. Caveats
 
-- **No caveats**: All E2E Playwright tests, Jest unit tests, static string checks, and code health tools were run and empirically verified directly against the live environment.
+- `services/ai-planner/.venv` contains a Python virtual environment; `prettier` scans it if `.prettierignore` does not explicitly exclude `.venv` or Python environments.
+- E2E Playwright tests (`npm run test:e2e`) were not executed as the primary unit and type checking checks failed first.
 
 ---
 
 ## 4. Conclusion
 
-**Verdict**: `VERDICT: REQUEST_CHANGES`
+**Verdict**: **REQUEST_CHANGES**
 
-Milestone 3 & E2E Testing Track cannot be approved until all static analysis and code health commands exit cleanly with code 0. The following concrete fixes are required:
-
-1. **Fix ESLint warning**: Remove unused import `EquipmentCard` from `tests/m2-equipment-ui-stress.test.tsx:5:10`.
-2. **Fix TypeScript error**: In `src/features/equipment/search-equipment.ts:47:17`, resolve duplicate `id` property assignment (e.g. place `...hit.fields` before `id:` or destructure `id` out of `hit.fields`).
-3. **Fix Prettier formatting**: Run `npx prettier --write .` to format `src/features/equipment/fallback-data.ts` and `src/features/equipment/search-equipment.ts`.
-4. **Update `TEST_READY.md`**: Ensure documentation accuracy matches actual CLI execution outputs after resolving errors.
+Required Remediations for Worker:
+1. **Fix Jest Test Mismatch**: Update `__tests__/generate-workoutplan.test.ts` or `generate-workout-plan.ts` Zod schema so `warmup` types align (`string[]` vs `string`).
+2. **Fix TS2322 Errors**: Fix JSX rendering in `src/app/home/page.tsx` lines 60, 65, 70, 75 to correctly map exercise arrays into React JSX elements.
+3. **Fix ESLint Violations**: Type the variables in `evals/eval-langsmith.ts` to eliminate `any` types and remove or use unused error variables (`e`).
+4. **Format Codebase**: Run `npx prettier --write .` (or format `e2e/workout-plan-streaming.spec.ts`, `evals/eval-langsmith.ts`, `jest.config.ts`, `package.json`, `PROJECT.md`) and ensure `.prettierignore` excludes `**/node_modules`, `**/.venv`, `**/dist`.
 
 ---
 
 ## 5. Verification Method
 
-To verify resolution of these findings independently:
+To re-verify after worker applies fixes:
 
 ```bash
-# 1. Run ESLint audit (must exit 0 with 0 warnings)
-npm run lint
-
-# 2. Run Prettier check (must exit 0 with 0 unformatted files)
-npx prettier --check .
-
-# 3. Run TypeScript typecheck (must exit 0 with 0 TS errors)
-npm run typecheck
-
-# 4. Run Jest unit test suite (must exit 0 with 10 suites passing)
+# 1. Run Jest tests
 npm run test
 
-# 5. Run Playwright E2E test suite (must exit 0 with 17 tests passing)
-npm run test:e2e
+# 2. Run TypeScript compiler
+npm run typecheck
+
+# 3. Run ESLint audit
+npm run lint
+
+# 4. Run Prettier format check
+npx prettier --check .
 ```
+All four commands must exit with code `0`.

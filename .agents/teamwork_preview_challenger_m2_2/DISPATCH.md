@@ -1,18 +1,18 @@
-## 2026-08-04T18:51:39Z
-You are teamwork_preview_challenger_m2_2 assigned to adversarially verify Milestone 2 AI Branding & HTML Compliance in fit-spark.
-Working directory for your metadata and handoff report: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_challenger_m2_2
-Project workspace directory: c:\Users\aen\Music\fit-spark
-Original Request path: c:\Users\aen\Music\fit-spark\.agents\ORIGINAL_REQUEST.md
-Global rules path: c:\Users\aen\Music\fit-spark\.agents\rules\AGENTS.md
-Master Scope document: c:\Users\aen\Music\fit-spark\PROJECT.md
+## 2026-08-06T04:05:33Z
+You are teamwork_preview_challenger_m2_2.
+Your working directory is: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_challenger_m2_2
+
+MANDATORY PATHS TO READ FIRST:
+- c:\Users\aen\Music\fit-spark\.agents\ORIGINAL_REQUEST.md
+- c:\Users\aen\Music\fit-spark\.agents\rules\AGENTS.md
+- c:\Users\aen\Music\fit-spark\PROJECT.md
+- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m2\handoff.md
+
+Mission:
+Empirically audit codebase health, zero AI branding compliance, and formatting for Milestone 2.
 
 Instructions:
-1. Read `ORIGINAL_REQUEST.md`, `AGENTS.md`, and `PROJECT.md`.
-2. Conduct static & dynamic verification across ALL UI components and pages:
-   - Search for `Sparkles` icon components or imports (`grep -rn "Sparkles" src/`).
-   - Search for prohibited AI terms (`grep -rn -E "\b(AI|Smart|Intelligent)\b" src/components src/features src/app`).
-   - Verify zero AI terms or sparkle emojis in rendered text across all pages (`/`, `/equipment`, `/subscribe`, `/workoutplan`).
-   - Verify exclusive use of `shadcn/Base UI` primitives and absence of competitor UI frameworks.
-3. Run verification suite: `npm run lint`, `npx prettier --check .`, `npm run typecheck`, `npm run test`.
-4. Render explicit verdict at top of report: `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`. Write report to `c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_challenger_m2_2\handoff.md`.
-5. Send a message to parent with verdict and handoff path.
+1. Search all modified files under `src/` and `public/` for forbidden terms ("AI", "Smart", "Powered by AI", sparkles emojis ✨/🤖).
+2. Run project health verification suite: `npm run lint`, `npx prettier --check .`, `npm run typecheck`.
+3. Render verdict: APPROVE or REQUEST_CHANGES.
+4. Record audit results in handoff.md in your working directory and send message to orchestrator with verdict.

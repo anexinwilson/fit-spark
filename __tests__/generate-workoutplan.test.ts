@@ -64,7 +64,17 @@ describe("generate-workoutplan route", () => {
   });
 
   it("parses valid JSON when Gemini returns it", async () => {
-    const expectedPlan = { Monday: { warmup: "run" } };
+    const expectedPlan = {
+      Monday: {
+        warmup: [
+          {
+            name: "Dynamic Warmup",
+            equipment: "bodyweight",
+            setsAndReps: "5 mins",
+          },
+        ],
+      },
+    };
     mockedGenerateGeminiJson.mockResolvedValueOnce(
       JSON.stringify(expectedPlan),
     );

@@ -2,12 +2,21 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Loader2, Plus, X } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Loader2,
+  Plus,
+  X,
+} from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -43,7 +52,7 @@ const limitationOptions = [
 async function generateWorkoutPlan(
   input: WorkoutPlanInput,
   onStatusUpdate?: (status: string, node?: string) => void,
-  onChunkUpdate?: (chunk: string) => void,
+  onLogUpdate?: (line: string) => void,
 ): Promise<WorkoutPlanResponse> {
   const response = await fetch("/api/generate-plan", {
     method: "POST",
@@ -101,8 +110,8 @@ async function generateWorkoutPlan(
           typeof data.node === "string" ? data.node : undefined,
         );
       }
-      if (typeof data.chunk === "string" && onChunkUpdate) {
-        onChunkUpdate(data.chunk);
+      if (typeof data.log === "string" && onLogUpdate) {
+        onLogUpdate(data.log);
       }
       if (data.complete) {
         result = data as WorkoutPlanResponse;
@@ -118,7 +127,7 @@ async function generateWorkoutPlan(
         if (data.error) throw new Error(data.error);
         if (data.status && onStatusUpdate)
           onStatusUpdate(data.status, data.node);
-        if (data.chunk && onChunkUpdate) onChunkUpdate(data.chunk);
+        if (data.log && onLogUpdate) onLogUpdate(data.log);
         if (data.complete) result = data as WorkoutPlanResponse;
       } catch (e) {
         if (
@@ -272,6 +281,7 @@ export function WorkoutPlanForm({
   );
   const [activePlan, setActivePlan] = useState(initialPlan);
   const [equipmentAliases, setEquipmentAliases] = useState<string[]>([]);
+  const [includeBodyweight, setIncludeBodyweight] = useState(false);
   const [equipmentLoading, setEquipmentLoading] = useState(true);
   const [equipmentLoadError, setEquipmentLoadError] = useState<string | null>(
     null,
@@ -282,7 +292,7 @@ export function WorkoutPlanForm({
   const [generationStatus, setGenerationStatus] = useState(
     "Resolving equipment...",
   );
-  const [generationStream, setGenerationStream] = useState("");
+  const [logLines, setLogLines] = useState<string[]>([]);
 
   const form = useForm<WorkoutPlanInput>({
     resolver: zodResolver(workoutPlanSchema),
@@ -329,7 +339,13 @@ export function WorkoutPlanForm({
   useEffect(() => {
     getUserEquipment()
       .then((aliases) => {
-        setEquipmentAliases(aliases);
+        const hasBw = aliases.some((a) => a.toLowerCase() === "bodyweight");
+        setIncludeBodyweight(hasBw);
+        const filtered = aliases.filter(
+          (a) => a.toLowerCase() !== "bodyweight",
+        );
+        setEquipmentAliases(filtered);
+
         form.setValue("equipment", aliases.join(", "), {
           shouldDirty: false,
           shouldValidate: true,
@@ -367,7 +383,7 @@ export function WorkoutPlanForm({
 
   const generation = useMutation({
     mutationFn: (input: WorkoutPlanInput) => {
-      setGenerationStream("");
+      setLogLines([]);
       setActiveNodeId("equipmentResolver");
       setGenerationStatus("Resolving equipment...");
       return generateWorkoutPlan(
@@ -376,14 +392,14 @@ export function WorkoutPlanForm({
           if (status) setGenerationStatus(status);
           if (node) setActiveNodeId(node);
         },
-        (chunk) => setGenerationStream((prev) => prev + chunk),
+        (line) => setLogLines((prev) => [...prev, line]),
       );
     },
     onSuccess: (response) => {
       setActivePlan(response.workoutPlan);
       void clearDraftMutation.mutateAsync();
       setGenerationStatus("Resolving equipment...");
-      setGenerationStream("");
+      setLogLines([]);
     },
     onError: () => {},
   });
@@ -437,7 +453,11 @@ export function WorkoutPlanForm({
   };
 
   const submitPlan = (input: WorkoutPlanInput) => {
-    if (equipmentAliases.length === 0) {
+    const finalEquip = [
+      ...equipmentAliases,
+      ...(includeBodyweight ? ["Bodyweight"] : []),
+    ];
+    if (finalEquip.length === 0) {
       form.setError("equipment", {
         message: "Choose at least one equipment item before building a plan.",
       });
@@ -446,7 +466,7 @@ export function WorkoutPlanForm({
 
     generation.mutate({
       ...input,
-      equipment: equipmentAliases.join(", "),
+      equipment: finalEquip.join(", "),
       limitations: form.getValues("limitations"),
     });
   };
@@ -487,7 +507,7 @@ export function WorkoutPlanForm({
       <WorkoutPlanLoading
         activeNodeId={activeNodeId}
         statusMessage={generationStatus}
-        streamContent={generationStream}
+        logLines={logLines}
       />
     );
   }
@@ -512,7 +532,7 @@ export function WorkoutPlanForm({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">
+                  <CardTitle className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl dark:text-slate-100">
                     Generation Failed
                   </CardTitle>
                   <Badge variant="destructive" className="font-semibold">
@@ -541,7 +561,7 @@ export function WorkoutPlanForm({
 
         <CardContent className="space-y-6 p-6 sm:p-8">
           <div className="rounded-xl border border-red-200/80 bg-red-50/70 p-4 dark:border-red-900/40 dark:bg-red-950/20">
-            <p className="text-xs font-semibold uppercase tracking-wider text-red-900 dark:text-red-200">
+            <p className="text-xs font-semibold tracking-wider text-red-900 uppercase dark:text-red-200">
               Error Message
             </p>
             <p className="mt-1 text-sm font-medium text-red-800 dark:text-red-300">
@@ -553,7 +573,7 @@ export function WorkoutPlanForm({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <p className="text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
                 Execution Log & Node Status
               </p>
               <Badge variant="outline" className="font-mono text-xs">
@@ -568,18 +588,18 @@ export function WorkoutPlanForm({
                 {generationStatus || "Resolving equipment..."}
               </p>
             </div>
-            {generationStream ? (
+            {logLines.length > 0 ? (
               <div className="mt-3 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-4 text-slate-100 shadow-inner">
                 <div className="mb-2 flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-sans text-xs font-medium text-slate-400">
                     Preserved Token Stream Log
                   </span>
                   <span className="font-mono text-[10px] text-slate-500">
-                    {generationStream.length} chars
+                    {logLines.length} entries
                   </span>
                 </div>
-                <pre className="max-h-52 overflow-y-auto whitespace-pre-wrap font-mono text-xs leading-relaxed text-slate-300">
-                  {generationStream}
+                <pre className="max-h-52 overflow-y-auto font-mono text-xs leading-relaxed whitespace-pre-wrap text-slate-300">
+                  {logLines.join("\n")}
                 </pre>
               </div>
             ) : null}
@@ -588,7 +608,8 @@ export function WorkoutPlanForm({
 
         <CardFooter className="flex flex-col gap-3 border-t bg-slate-50/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:bg-slate-900/40">
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Need to adjust options? You can modify form fields or retry building your plan.
+            Need to adjust options? You can modify form fields or retry building
+            your plan.
           </p>
           <div className="flex gap-2">
             <Button
@@ -862,6 +883,36 @@ export function WorkoutPlanForm({
                   )}
                 </div>
               </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  Cardio preferences
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Should we incorporate cardiovascular exercises into your plan?
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Controller
+                    control={form.control}
+                    name="includeCardio"
+                    render={({ field }) => (
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="includeCardio"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                        <label
+                          htmlFor="includeCardio"
+                          className="cursor-pointer text-sm leading-none font-medium text-slate-700 peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-slate-300"
+                        >
+                          Yes, include cardio exercises
+                        </label>
+                      </div>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -900,20 +951,45 @@ export function WorkoutPlanForm({
                     {equipmentLoadError}
                   </p>
                 ) : equipmentAliases.length > 0 ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {equipmentAliases.map((alias) => (
-                      <span
-                        key={alias}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200"
-                      >
-                        <Check
-                          className="size-3.5 text-emerald-600"
-                          aria-hidden="true"
+                  <>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {equipmentAliases.map((alias) => (
+                        <span
+                          key={alias}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200"
+                        >
+                          <Check
+                            className="size-3.5 text-emerald-600"
+                            aria-hidden="true"
+                          />
+                          {alias}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-950/60">
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          id="includeBodyweight"
+                          checked={includeBodyweight}
+                          onCheckedChange={(checked) =>
+                            setIncludeBodyweight(checked === true)
+                          }
                         />
-                        {alias}
-                      </span>
-                    ))}
-                  </div>
+                        <div className="space-y-1 leading-none">
+                          <label
+                            htmlFor="includeBodyweight"
+                            className="cursor-pointer text-sm leading-none font-medium text-slate-700 dark:text-slate-300"
+                          >
+                            Include Bodyweight exercises
+                          </label>
+                          <p className="text-muted-foreground mt-1 text-xs">
+                            Essential for a well-rounded plan. Select this if
+                            you lack other equipment.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="mt-4 rounded-xl border border-dashed border-blue-300 bg-white/80 p-4 dark:border-blue-800 dark:bg-slate-950/50">
                     <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -1018,12 +1094,12 @@ export function WorkoutPlanForm({
             </div>
           )}
 
-          {(draftError || generation.isError) && (
+          {draftError && (
             <div
               role="alert"
               className="mt-6 rounded-xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-300"
             >
-              {draftError?.message ?? generation.error?.message}
+              {draftError.message}
             </div>
           )}
 

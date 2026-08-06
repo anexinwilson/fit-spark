@@ -1,31 +1,26 @@
-## 2026-08-05T00:43:15Z
+## 2026-08-06T04:12:47Z
 
-You are the Remediation Worker for Milestone 3 (E2E Test Suite & Code Health Verification) of fit-spark.
+Execute Milestone 3 Iteration 2 (Remediate Code Health, Formatting, Types & Tests).
 
-Working directory for your metadata: c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m3_iter2
-Project workspace root: c:\Users\aen\Music\fit-spark
+Specific Instructions to Fix Failures:
+1. Fix `src/app/home/page.tsx` Type Mismatch:
+   - Fix rendering of `ExerciseDetail[]` array so it is mapped/formatted as valid React nodes instead of trying to render the array object directly (resolving `TS2322`).
+2. Fix ESLint Warning in `src/features/workout-generator/graph.ts`:
+   - Remove or prefix unused variable `equipmentQuery` at line 90 (`_equipmentQuery` or remove declaration) to satisfy `eslint . --max-warnings=0`.
+3. Fix Test Fixture Mismatch in `__tests__/generate-workoutplan.test.ts`:
+   - Update `warmup` fixture in test file from string to array format matching `weeklyWorkoutPlanSchema`.
+4. Run Prettier Workspace Formatting:
+   - Run `npx prettier --write .` and verify `npx prettier --check .` passes with exit code 0 across the workspace.
+5. Run Verification Commands:
+   - Run `npx tsc --noEmit` / `npm run typecheck` (Must pass with 0 errors).
+   - Run `npm run lint` (`eslint . --max-warnings=0`, Must pass with 0 warnings/errors).
+   - Run `npx prettier --check .` (Must pass with 0 formatting errors).
+   - Run `npm run test` (Must pass with 0 failed test suites).
+   - Run `npx playwright test` (Must pass all e2e specs).
+6. Update `TEST_READY.md` with verified pass status and commands.
+7. Record all changes, commands run, and exact output in handoff.md in your working directory (`c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_worker_m3_iter2\handoff.md`).
 
-Read reference files:
-- c:\Users\aen\Music\fit-spark\.agents\ORIGINAL_REQUEST.md
-- c:\Users\aen\Music\fit-spark\.agents\rules\AGENTS.md
-- c:\Users\aen\Music\fit-spark\PROJECT.md
-- c:\Users\aen\Music\fit-spark\TEST_INFRA.md
-- c:\Users\aen\Music\fit-spark\TEST_READY.md
-- c:\Users\aen\Music\fit-spark\.agents\teamwork_preview_reviewer_m3_1\handoff.md
+## 2026-08-05T22:43:17Z
+From parent:
+Challenger 2 also reported TS errors in `evals/eval-langsmith.ts` (or evals script type imports). Ensure that you fix all type issues in `evals/eval-langsmith.ts` and run `npx prettier --write .` across the entire workspace so `npm run typecheck`, `npm run lint`, `npx prettier --check .`, and `npm run test` pass 100% cleanly with exit code 0.
 
-MANDATORY INTEGRITY WARNING:
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
-
-Your Tasks:
-1. Initialize DISPATCH.md, BRIEFING.md, and progress.md in your working directory.
-2. Resolve the 2 verification failures identified in Reviewer 1's handoff report:
-   a. **ESLint Unused Import Warning**: Remove the unused import `EquipmentCard` from `tests/m2-equipment-ui-stress.test.tsx` (line 5).
-   b. **Prettier Format Check Failure**: Run `npx prettier --write .` so all files (including `src/features/equipment/fallback-data.ts` and `src/features/equipment/search-equipment.ts`) pass `npx prettier --check .`.
-3. Independently execute and verify that ALL 5 verification commands pass cleanly with exit code 0:
-   - `npm run lint`
-   - `npx prettier --check .`
-   - `npm run typecheck`
-   - `npm run test`
-   - `npm run test:e2e`
-4. Confirm `TEST_READY.md` accurately reflects that all 5 verification commands pass with exit code 0.
-5. Create handoff.md in your working directory with detailed evidence of all fixes and command outputs, then send message to parent orchestrator.

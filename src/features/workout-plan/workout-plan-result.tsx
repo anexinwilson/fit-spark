@@ -19,25 +19,52 @@ type WorkoutPlanResultProps = {
 };
 
 function WorkoutDetails({ workout }: { workout: WeeklyWorkoutPlan[string] }) {
+  const sections = [
+    { label: "Warm-up", exercises: workout.warmup },
+    { label: "Main workout", exercises: workout.mainWorkout },
+    { label: "Cardio", exercises: workout.cardio },
+    { label: "Cool-down", exercises: workout.cooldown },
+  ];
+
   return (
-    <dl className="space-y-4 text-sm leading-6">
-      {[
-        ["Warm-up", workout.warmup],
-        ["Main workout", workout.mainWorkout],
-        ["Cardio", workout.cardio],
-        ["Cool-down", workout.cooldown],
-      ].map(
-        ([label, value]) =>
-          value && (
+    <div className="space-y-6">
+      {sections.map(
+        ({ label, exercises }) =>
+          exercises &&
+          exercises.length > 0 && (
             <div key={label}>
-              <dt className="text-foreground font-semibold">{label}</dt>
-              <dd className="text-muted-foreground mt-1 whitespace-pre-line">
-                {value}
-              </dd>
+              <h4 className="text-foreground mb-3 font-semibold">{label}</h4>
+              <ul className="space-y-3">
+                {exercises.map((ex, idx) => (
+                  <li
+                    key={idx}
+                    className="rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-800"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-slate-900 dark:text-slate-100">
+                          {ex.name}
+                        </p>
+                        <p className="mt-1 text-slate-600 dark:text-slate-400">
+                          {ex.setsAndReps}
+                        </p>
+                        {ex.notes && (
+                          <p className="mt-1 text-xs text-slate-500 italic">
+                            {ex.notes}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="secondary" className="shrink-0 text-xs">
+                        {ex.equipment}
+                      </Badge>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           ),
       )}
-    </dl>
+    </div>
   );
 }
 

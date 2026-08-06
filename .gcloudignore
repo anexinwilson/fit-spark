@@ -2,6 +2,7 @@
 .git
 .github
 .next
+.swc
 coverage
 node_modules
 scratch
@@ -10,5 +11,6 @@ __tests__
 .env*
 *.tfstate
 *.tfstate.*
+tsconfig.tsbuildinfo
 infra/terraform/.terraform
 npm-debug.log*

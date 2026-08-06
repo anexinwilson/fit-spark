@@ -11,7 +11,17 @@ export async function POST(req: Request) {
       trainingDays,
       limitations,
       equipment,
+      includeCardio,
     } = body;
+
+    const parsedEquipment = Array.isArray(equipment)
+      ? equipment.filter(Boolean)
+      : typeof equipment === "string" && equipment.trim().length > 0
+        ? equipment
+            .split(", ")
+            .map((e) => e.trim())
+            .filter(Boolean)
+        : [];
 
     if (
       !fitnessGoal ||
@@ -28,13 +38,26 @@ export async function POST(req: Request) {
       );
     }
 
+    if (parsedEquipment.length === 0) {
+      return NextResponse.json(
+        {
+          error: "Equipment selection cannot be empty.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const goalModifier = includeCardio
+      ? " (Must include Cardio)"
+      : " (No Cardio)";
+
     const initialState = {
-      goal: fitnessGoal,
+      goal: fitnessGoal + goalModifier,
       experience: experienceLevel,
       daysPerWeek: trainingDays.length,
       trainingDays: trainingDays,
       injuries: limitations || "None",
-      equipment: equipment ? equipment.split(", ") : ["bodyweight"],
+      equipment: parsedEquipment,
     };
 
     const encoder = new TextEncoder();
@@ -53,31 +76,109 @@ export async function POST(req: Request) {
               event.name !== "LangGraph"
             ) {
               const nodeName = event.name;
-              let msg = "";
-              if (nodeName === "equipmentResolver")
-                msg = "Resolving equipment...";
-              else if (nodeName === "exerciseRetriever")
-                msg = "Searching exercise catalog...";
-              else if (nodeName === "planBuilder")
-                msg = "Building weekly schedule...";
-              else if (nodeName === "safetyEvaluator")
-                msg = "Evaluating safety & compliance...";
+              let statusMsg = "";
+              let logLines: string[] = [];
 
-              if (msg) {
+              if (nodeName === "equipmentResolver") {
+                statusMsg = "Resolving equipment...";
+                logLines = [
+                  "[equipmentResolver] Agent starting...",
+                  "[equipmentResolver] Reading user equipment profile from session",
+                ];
+              } else if (nodeName === "exerciseRetriever") {
+                statusMsg = "Searching exercise catalog...";
+                logLines = [
+                  "[exerciseRetriever] Connecting to Pinecone vector database...",
+                  "[exerciseRetriever] Querying RAG index: exercises-v1",
+                  "[exerciseRetriever] Applying equipment filters...",
+                ];
+              } else if (nodeName === "muscleGapAnalyzer") {
+                statusMsg = "Analyzing muscle group coverage...";
+                logLines = [
+                  "[muscleGapAnalyzer] Mapping equipment to muscle groups...",
+                  "[muscleGapAnalyzer] Detecting coverage gaps...",
+                  "[muscleGapAnalyzer] Generating coach recommendations...",
+                ];
+              } else if (nodeName === "planBuilder") {
+                statusMsg = "Building weekly schedule...";
+                logLines = [
+                  "[planBuilder] Preparing prompt with retrieved exercises...",
+                  "[planBuilder] Invoking Gemini model (gemini-3.6-flash)...",
+                  "[planBuilder] Streaming plan tokens...",
+                ];
+              } else if (nodeName === "safetyEvaluator") {
+                statusMsg = "Evaluating safety & compliance...";
+                logLines = [
+                  "[safetyEvaluator] Running programmatic compliance checks (0 tokens)...",
+                  "[safetyEvaluator] Checking RAG exercise compliance...",
+                  "[safetyEvaluator] Checking injury safety constraints...",
+                  "[safetyEvaluator] Checking equipment selection constraints...",
+                ];
+              }
+
+              if (statusMsg) {
                 controller.enqueue(
                   encoder.encode(
-                    `data: ${JSON.stringify({ status: msg, node: nodeName })}\n\n`,
+                    `data: ${JSON.stringify({ status: statusMsg, node: nodeName })}\n\n`,
+                  ),
+                );
+              }
+              for (const line of logLines) {
+                controller.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ log: line })}\n\n`),
+                );
+              }
+            } else if (
+              event.event === "on_chain_end" &&
+              event.name !== "LangGraph"
+            ) {
+              const nodeName = event.name;
+              let completionLog = "";
+              if (nodeName === "equipmentResolver") {
+                const eq = (event.data?.output?.equipment as string[]) ?? [];
+                completionLog = `[equipmentResolver] Done. Equipment resolved: ${eq.join(", ") || "none"}`;
+              } else if (nodeName === "exerciseRetriever") {
+                const exCount =
+                  (event.data?.output?.exercises as unknown[])?.length ?? 0;
+                completionLog = `[exerciseRetriever] Done. Fetched ${exCount} exercises from Pinecone.`;
+              } else if (nodeName === "muscleGapAnalyzer") {
+                const insight = event.data?.output?.coachInsight as {
+                  coveredGroups?: string[];
+                  missingGroups?: string[];
+                  coachMessage?: string;
+                } | null;
+                if (insight) {
+                  const covered =
+                    (insight.coveredGroups ?? []).join(", ") || "none";
+                  const missing =
+                    (insight.missingGroups ?? []).join(", ") || "none";
+                  completionLog = `[muscleGapAnalyzer] Done. Covered: ${covered}. Missing: ${missing}.`;
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({ coachInsight: insight })}\n\n`,
+                    ),
+                  );
+                }
+              } else if (nodeName === "planBuilder") {
+                completionLog =
+                  "[planBuilder] Done. Weekly schedule generated.";
+              } else if (nodeName === "safetyEvaluator") {
+                const issues =
+                  (event.data?.output?.safetyIssues as string[]) ?? [];
+                completionLog =
+                  issues.length === 0
+                    ? "[safetyEvaluator] Done. Plan passed all safety checks."
+                    : `[safetyEvaluator] Issues found (${issues.length}). Retrying plan...`;
+              }
+              if (completionLog) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ log: completionLog })}\n\n`,
                   ),
                 );
               }
             } else if (event.event === "on_chat_model_stream") {
-              if (event.data?.chunk?.content) {
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({ chunk: event.data.chunk.content })}\n\n`,
-                  ),
-                );
-              }
+              // Don't stream raw tokens to UI — suppress
             } else if (
               event.event === "on_chain_end" &&
               event.name === "LangGraph"
@@ -120,6 +221,7 @@ export async function POST(req: Request) {
                 complete: true,
                 workoutPlan: parsedPlan,
                 exercisesUsed: finalState.exercises,
+                coachInsight: finalState.coachInsight ?? null,
               })}\n\n`,
             ),
           );

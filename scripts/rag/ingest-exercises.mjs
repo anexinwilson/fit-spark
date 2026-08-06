@@ -231,6 +231,8 @@ export function normalizeExercises(input) {
       source_id: exercise.id,
       level: exercise.level || "unspecified",
       category: exercise.category || "unspecified",
+      mechanic: exercise.mechanic || "unspecified",
+      force: exercise.force || "unspecified",
       equipment: equipment.equipmentType,
       equipment_type: equipment.equipmentType,
       equipment_name: equipment.equipmentName,
@@ -420,18 +422,33 @@ export async function ingestExercises({
   fetchImpl = fetch,
 } = {}) {
   const sourceRecords = await fetchSource(fetchImpl);
+
+  // Images are mirrored to Cloud Storage for reliable, long-lived serving.
+  // This step requires GCP credentials, which are available automatically
+  // when this script runs as a Cloud Run Job.
   const records = await mirrorImages(
     fetchImpl,
     sourceRecords,
     config.RAG_IMAGE_BUCKET,
   );
+
   for (let offset = 0; offset < records.length; offset += BATCH_SIZE) {
-    await upsertBatch(
-      fetchImpl,
-      config,
-      records.slice(offset, offset + BATCH_SIZE),
+    // Strip image URLs before sending to Pinecone — images are a UI concern
+    // and are stored in Neon Postgres via syncEquipmentCatalog instead.
+    const pineconeRecords = records
+      .slice(offset, offset + BATCH_SIZE)
+      .map((record) => {
+        const copy = { ...record };
+        delete copy.image_urls;
+        delete copy.source_image_urls;
+        return copy;
+      });
+    await upsertBatch(fetchImpl, config, pineconeRecords);
+    console.log(
+      `  Upserted ${Math.min(offset + BATCH_SIZE, records.length)}/${records.length} records...`,
     );
   }
+
   const equipmentCount = await syncEquipmentCatalog(config, records);
   const verification = await verifyIndex(fetchImpl, config);
   return { count: records.length, equipmentCount, verification };
@@ -440,9 +457,12 @@ export async function ingestExercises({
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = await ingestExercises();
   const hits = result.verification?.result?.hits ?? [];
-  console.log(`Indexed ${result.count} exercise records.`);
+  console.log(`\nIndexed ${result.count} exercise records into Pinecone.`);
   console.log(
     `Synced ${result.equipmentCount} equipment records to PostgreSQL.`,
   );
-  console.log(`Verification returned ${hits.length} matches.`);
+  console.log(`Verification query returned ${hits.length} matches.`);
+  if (hits.length > 0) {
+    console.log("Sample match:", hits[0]?.fields?.name);
+  }
 }
