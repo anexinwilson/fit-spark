@@ -1,7 +1,7 @@
 "use client";
 
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import { CalendarDays, Dumbbell, History, Menu } from "lucide-react";
+import { CalendarDays, Dumbbell, History, Menu, ClipboardList } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -24,24 +24,24 @@ const authenticatedLinks = [
 
 export default function NavBar() {
   return (
-    <header className="sticky top-0 z-40 border-b border-blue-400/30 bg-linear-to-r from-blue-700 to-sky-500 text-white shadow-sm">
+    <header className="fixed inset-x-0 top-6 z-50 flex justify-center px-4">
       <nav
         aria-label="Primary navigation"
-        className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8"
+        className="flex h-14 w-full max-w-4xl items-center justify-between rounded-full border border-white/10 bg-background/60 px-6 text-foreground shadow-2xl backdrop-blur-2xl supports-[backdrop-filter]:bg-background/40"
       >
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-lg focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+          className="flex items-center gap-3 rounded-full focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
         >
           <Image
             src="/app-icon.png"
-            width={40}
-            height={40}
-            sizes="40px"
+            width={32}
+            height={32}
+            sizes="32px"
             alt=""
-            className="size-10 rounded-xl"
+            className="size-8 rounded-lg"
           />
-          <span className="text-xl font-bold tracking-tight sm:text-2xl">
+          <span className="text-xl font-bold italic tracking-tight sm:text-2xl">
             FitSpark
           </span>
         </Link>
@@ -57,6 +57,7 @@ export default function NavBar() {
               <CalendarDays aria-hidden="true" />
               Today
             </Button>
+
             <Button
               nativeButton={false}
               variant="ghost"
@@ -72,7 +73,7 @@ export default function NavBar() {
               className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
               render={<Link href="/workoutplan" />}
             >
-              <Dumbbell aria-hidden="true" />
+              <ClipboardList aria-hidden="true" />
               My Plan
             </Button>
             <Button

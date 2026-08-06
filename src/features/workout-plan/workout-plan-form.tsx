@@ -17,7 +17,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -280,6 +280,8 @@ export function WorkoutPlanForm({
       : 0,
   );
   const [activePlan, setActivePlan] = useState(initialPlan);
+  const [activeCoachInsight, setActiveCoachInsight] =
+    useState<WorkoutPlanResponse["coachInsight"]>(null);
   const [equipmentAliases, setEquipmentAliases] = useState<string[]>([]);
   const [includeBodyweight, setIncludeBodyweight] = useState(false);
   const [equipmentLoading, setEquipmentLoading] = useState(true);
@@ -397,12 +399,17 @@ export function WorkoutPlanForm({
     },
     onSuccess: (response) => {
       setActivePlan(response.workoutPlan);
+      setActiveCoachInsight(response.coachInsight);
       void clearDraftMutation.mutateAsync();
       setGenerationStatus("Resolving equipment...");
       setLogLines([]);
     },
     onError: () => {},
   });
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step, generation.isPending]);
 
   const draftInput = (): WorkoutPlanDraft["input"] => {
     const values = form.getValues();
@@ -486,18 +493,35 @@ export function WorkoutPlanForm({
 
   if (activePlan) {
     return (
-      <div className="space-y-6">
-        <WorkoutPlanResult plan={activePlan} />
-        <Button
-          variant="outline"
-          onClick={() => {
-            generation.reset();
-            setActivePlan(undefined);
-            setStep(0);
-          }}
-        >
-          Build a new plan
-        </Button>
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        <WorkoutPlanResult
+          plan={activePlan}
+          coachInsight={activeCoachInsight}
+        />
+        
+        <div className="flex flex-col sm:flex-row items-center gap-4 mt-8 pt-8 border-t border-white/10">
+          <a
+            href="/today"
+            className={cn(
+              buttonVariants({ size: "lg" }),
+              "rounded-full px-12 h-14 text-lg bg-blue-600 hover:bg-blue-700 font-semibold w-full sm:w-auto shadow-[0_0_40px_-10px_rgba(37,99,235,0.5)] hover:shadow-[0_0_60px_-10px_rgba(37,99,235,0.7)] transition-all",
+            )}
+          >
+            Start Today's Workout
+            <ArrowRight aria-hidden="true" className="ml-2 size-5" />
+          </a>
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto h-14 rounded-full px-8 border-white/20 hover:bg-white/5"
+            onClick={() => {
+              generation.reset();
+              setActivePlan(undefined);
+              setStep(0);
+            }}
+          >
+            Build a new plan
+          </Button>
+        </div>
       </div>
     );
   }
@@ -580,7 +604,7 @@ export function WorkoutPlanForm({
                 {activeNodeId || "failed"}
               </Badge>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+            <div className="rounded-lg border border-white/5 bg-white/5 p-3">
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Last recorded node status:
               </p>
@@ -606,7 +630,7 @@ export function WorkoutPlanForm({
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-3 border-t bg-slate-50/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:bg-slate-900/40">
+        <CardFooter className="flex flex-col gap-3 border-t border-white/5 bg-black/20 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Need to adjust options? You can modify form fields or retry building
             your plan.
@@ -640,34 +664,34 @@ export function WorkoutPlanForm({
   }
 
   return (
-    <Card className="overflow-hidden border-slate-200/80 shadow-xl shadow-blue-950/5 dark:border-slate-800">
-      <CardHeader className="border-b bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-6 sm:p-8 dark:from-blue-950/40 dark:via-slate-900 dark:to-cyan-950/30">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-              Step {step + 1} of {steps.length}
-            </p>
-            <CardTitle className="mt-2 text-2xl tracking-tight sm:text-3xl">
-              {steps[step]}
-            </CardTitle>
-            <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-6">
-              Your answers and selected equipment will be used to build your
-              plan.
-            </p>
+    <Card className="overflow-hidden border-white/5 shadow-2xl bg-card/40 backdrop-blur-3xl animate-in fade-in slide-in-from-bottom-10 duration-700">
+      <CardHeader className="border-b border-white/5 bg-black/20 p-6 sm:p-8">
+        <div className="flex items-center gap-3">
+          <div className="h-2 w-full rounded-full bg-primary/20">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500 ease-in-out"
+              style={{ width: `${Math.round(((step + 1) / 3) * 100)}%` }}
+            />
           </div>
-          <span className="rounded-full bg-white/80 px-3 py-1 text-sm font-semibold text-blue-700 shadow-sm dark:bg-slate-900/80 dark:text-blue-300">
-            {Math.round(((step + 1) / steps.length) * 100)}%
+          <span className="text-sm font-medium text-primary">
+            {Math.round(((step + 1) / 3) * 100)}%
           </span>
         </div>
-        <div className="mt-6 h-2 overflow-hidden rounded-full bg-blue-100 dark:bg-slate-700">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-[width] duration-500 motion-reduce:transition-none"
-            style={{ width: `${((step + 1) / steps.length) * 100}%` }}
-          />
+        <div className="mt-6 space-y-2">
+          <p className="text-xs font-bold tracking-[0.2em] text-primary uppercase">
+            Step {step + 1} of 3
+          </p>
+          <CardTitle className="mt-2 text-3xl font-black italic tracking-tighter sm:text-5xl">
+            {steps[step]}
+          </CardTitle>
+          <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-6">
+            Your answers and selected equipment will be used to build your
+            plan.
+          </p>
         </div>
       </CardHeader>
 
-      <CardContent className="p-6 sm:p-8">
+      <CardContent className="p-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0">
         <form onSubmit={form.handleSubmit(submitPlan)}>
           {step === 0 && (
             <Controller
@@ -763,7 +787,7 @@ export function WorkoutPlanForm({
                 )}
               />
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="rounded-2xl border border-white/5 bg-white/5 p-5">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Start with a simple schedule
                 </p>
@@ -884,7 +908,7 @@ export function WorkoutPlanForm({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="rounded-2xl border border-white/5 bg-white/5 p-5">
                 <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   Cardio preferences
                 </p>

@@ -69,9 +69,11 @@ model WorkoutSession {
 model ExerciseLog {
   id                 String         @id @default(uuid())
   workoutSessionId   String
-  pineconeExerciseId String
+  pineconeExerciseId String?
+  exerciseName       String
   order              Int
   stickyNote         String?
+  section            String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   workoutSession     WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)

@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { workoutPlanWorkflow } from "@/features/workout-generator/graph";
 import { RateLimitQuotaExhaustedError } from "@/lib/errors";
+import { getAuthenticatedUserId } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const body = await req.json();
     const {
       fitnessGoal,
@@ -211,8 +217,22 @@ export async function POST(req: Request) {
             const cleanedStr =
               planStr.replace(/```json/g, "").replace(/```/g, "") || "{}";
             parsedPlan = JSON.parse(cleanedStr);
-          } catch {
-            console.error("Failed to parse LLM JSON:", finalState.plan);
+            
+            // Clean up uncompleted sessions from any previous plan
+            await prisma.workoutSession.deleteMany({
+              where: {
+                userId,
+                completedAt: null
+              }
+            });
+            // Save the new blueprint
+            await prisma.workoutPlan.upsert({
+              where: { userId },
+              create: { userId, plan: parsedPlan },
+              update: { plan: parsedPlan },
+            });
+          } catch (e) {
+            console.error("Failed to parse LLM JSON or save to DB:", e);
           }
 
           controller.enqueue(

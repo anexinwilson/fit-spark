@@ -31,6 +31,7 @@ export type ExerciseDetail = {
   equipment: string;
   setsAndReps: string;
   notes?: string;
+  instructions?: string[];
 };
 
 export type DailyWorkoutPlan = {
@@ -47,6 +48,7 @@ const exerciseDetailSchema = z.object({
   equipment: z.string(),
   setsAndReps: z.string(),
   notes: z.string().optional(),
+  instructions: z.array(z.string()).optional(),
 });
 
 export const weeklyWorkoutPlanSchema = z.record(

@@ -33,6 +33,15 @@ export async function POST(request: NextRequest) {
     }
 
     const workoutPlan = await createWorkoutPlan(input.data);
+    
+    // Clean up uncompleted sessions from any previous plan so they don't overlap
+    await prisma.workoutSession.deleteMany({
+      where: {
+        userId,
+        completedAt: null
+      }
+    });
+
     await prisma.workoutPlan.upsert({
       where: { userId },
       create: { userId, plan: workoutPlan },

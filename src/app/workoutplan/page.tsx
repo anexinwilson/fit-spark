@@ -31,20 +31,10 @@ export default async function WorkoutPlanPage() {
     : undefined;
 
   return (
-    <section className="min-h-[calc(100svh-4rem)] bg-slate-50 py-10 sm:py-14">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6">
-        <div className="mb-8 max-w-2xl">
-          <p className="text-sm font-semibold tracking-wider text-blue-700 uppercase">
-            My plan
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            Let’s make your next gym visit clear.
-          </h1>
-          <p className="text-muted-foreground mt-3 text-lg leading-8">
-            Choose the equipment you can use, share your goal and experience,
-            and FitSpark will build a structured sequence for your week.
-          </p>
-        </div>
+    <section className="min-h-screen bg-ambient-aurora bg-background py-24 relative overflow-hidden">
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] pointer-events-none opacity-50" />
+      
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 relative z-10">
         <WorkoutPlanForm initialPlan={initialPlan} />
       </div>
     </section>

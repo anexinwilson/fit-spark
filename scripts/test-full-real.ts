@@ -314,7 +314,7 @@ async function main() {
           console.log(`\n  ${section.toUpperCase()}:`);
           (exercises ?? []).forEach((ex) => {
             console.log(`    • ${ex.name} — ${ex.setsAndReps}`);
-            console.log(`      Coach: ${ex.notes?.slice(0, 120)}...`);
+            console.log(`      Notes: ${ex.notes?.slice(0, 120)}...`);
           });
         }
       }
@@ -332,11 +332,11 @@ async function main() {
   issues.forEach((i) => console.log(i));
 
   if (score >= 80) {
-    console.log("\n✅ PASS — Pipeline is working intelligently like a coach");
+    console.log("\n✅ PASS — Pipeline is working correctly");
   } else if (score >= 50) {
     console.log("\n⚠️  PARTIAL — Pipeline works but quality needs improvement");
   } else {
-    console.log("\n❌ FAIL — Pipeline is not producing coach-level plans");
+    console.log("\n❌ FAIL — Pipeline is not producing quality plans");
   }
 
   console.log("\n🔗 View LangSmith traces at: https://smith.langchain.com/");

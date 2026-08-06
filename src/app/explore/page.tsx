@@ -17,20 +17,13 @@ export default async function ExplorePage({
   const params = await searchParams;
 
   return (
-    <main className="min-h-screen bg-slate-50/50 py-10 dark:bg-slate-950/50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 text-center sm:text-left">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-100 px-3.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/80 dark:text-blue-300">
-            <Dumbbell className="size-3.5" aria-hidden="true" />
-            <span>Explore your gym</span>
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
-            Equipment you can use
+    <main className="min-h-screen bg-ambient-aurora bg-background pt-32 pb-16 relative overflow-hidden">
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[100px] pointer-events-none opacity-50" />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="mb-8 text-center sm:text-left">
+          <h1 className="text-3xl font-black italic tracking-tighter text-foreground sm:text-4xl animate-in fade-in slide-in-from-bottom-6 duration-1000">
+            Choose equipments you recognize
           </h1>
-          <p className="mt-2.5 max-w-3xl text-base text-slate-600 dark:text-slate-400">
-            Choose equipment you recognize. FitSpark will use your selection
-            when building a plan.
-          </p>
         </div>
         <EquipmentCatalog isPlanning={params.returnTo === "workoutplan"} />
       </div>

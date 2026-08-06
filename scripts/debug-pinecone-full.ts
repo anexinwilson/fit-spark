@@ -59,7 +59,7 @@ async function queryPinecone(queryText: string, topK = 150) {
         "primary_muscles",
         "secondary_muscles",
         "mechanic",
-        "force",
+        "force", "text",
       ],
     }),
   });

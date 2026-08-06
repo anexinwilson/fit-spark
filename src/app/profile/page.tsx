@@ -91,6 +91,22 @@ export default function ProfilePage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const discardCurrentPlan = useMutation({
+    mutationFn: () => requestJson("/api/workout-plan/clear?type=current", { method: "DELETE" }),
+    onSuccess: () => {
+      toast.success("Current plan discarded");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const wipeHistory = useMutation({
+    mutationFn: () => requestJson("/api/workout-plan/clear?type=history", { method: "DELETE" }),
+    onSuccess: () => {
+      toast.success("All history and plans wiped");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   if (!isLoaded) {
     return (
       <div className="mx-auto max-w-3xl space-y-6 px-4 py-12">
@@ -129,9 +145,9 @@ export default function ProfilePage() {
       .join("") || "FS";
 
   return (
-    <section className="min-h-[calc(100svh-4rem)] bg-slate-50 py-12">
-      <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6">
-        <Card id="subscription">
+    <section className="min-h-[calc(100svh-4rem)] bg-ambient-aurora bg-background text-foreground py-24 relative overflow-hidden">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6 relative z-10">
+        <Card id="subscription" className="border-white/10 bg-card/40 backdrop-blur-xl shadow-2xl">
           <CardContent className="flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:text-left">
             <Avatar className="size-20">
               <AvatarImage src={user.imageUrl} alt="" />
@@ -149,7 +165,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-white/10 bg-card/40 backdrop-blur-xl shadow-2xl">
           <CardHeader>
             <CardTitle>Subscription</CardTitle>
           </CardHeader>
@@ -168,7 +184,7 @@ export default function ProfilePage() {
               </div>
             ) : currentPlan ? (
               <div className="grid gap-8 md:grid-cols-2">
-                <div className="rounded-xl bg-slate-50 p-5">
+                <div className="rounded-xl bg-white/5 border border-white/10 p-5 text-white">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-lg font-semibold">
                       {currentPlan.name}
@@ -189,7 +205,7 @@ export default function ProfilePage() {
                       Stripe ends the paid period.
                     </p>
                   )}
-                  <p className="mt-3 text-2xl font-bold text-blue-700">
+                  <p className="mt-3 text-2xl font-bold text-primary">
                     {new Intl.NumberFormat("en-CA", {
                       style: "currency",
                       currency: currentPlan.currency,
@@ -289,6 +305,78 @@ export default function ProfilePage() {
                   </AlertDialog>
                 </div>
               )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-900/30 bg-red-950/10 backdrop-blur-xl shadow-2xl">
+          <CardHeader>
+            <CardTitle className="text-red-400">Data & History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-sm">
+              Manage your generated plans and historical workout logs.
+            </p>
+            
+            <div className="mt-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-6">
+                <div>
+                  <h4 className="font-semibold text-white">Discard Current Plan</h4>
+                  <p className="text-sm text-slate-400 mt-1">Deletes your active workout plan so you can generate a new one. Keeps your past workout history.</p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger render={<Button variant="secondary" className="shrink-0" />}>
+                    Discard Plan
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Discard current plan?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will delete your current active plan. Your completed historical workouts will be preserved.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        disabled={discardCurrentPlan.isPending}
+                        onClick={() => discardCurrentPlan.mutate()}
+                      >
+                        Yes, Discard
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-semibold text-red-400">Wipe All History</h4>
+                  <p className="text-sm text-slate-400 mt-1">Permanently deletes all historical logs and current plans. This is a nuclear option.</p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger render={<Button variant="destructive" className="shrink-0" />}>
+                    Wipe History
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete your current workout plan AND all historical exercise logs. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        disabled={wipeHistory.isPending}
+                        onClick={() => wipeHistory.mutate()}
+                      >
+                        Yes, Erase Everything
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

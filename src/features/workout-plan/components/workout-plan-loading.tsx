@@ -89,7 +89,7 @@ export function WorkoutPlanLoading({
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden border-slate-200/80 shadow-xl shadow-blue-950/5 dark:border-slate-800">
-        <CardHeader className="border-b bg-gradient-to-br from-blue-50/80 via-white to-slate-50 p-6 sm:p-8 dark:from-blue-950/30 dark:via-slate-900 dark:to-slate-900/50">
+        <CardHeader className="border-b bg-gradient-to-br from-blue-50/80 via-white to-slate-50 p-6 sm:px-8 sm:py-6 dark:from-blue-950/30 dark:via-slate-900 dark:to-slate-900/50">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -121,7 +121,7 @@ export function WorkoutPlanLoading({
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-8 p-6 sm:p-8">
+        <CardContent className="space-y-6 p-6 pt-4 sm:px-8 sm:pb-8 sm:pt-6">
           {/* LangGraph Node Execution Stepper */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">

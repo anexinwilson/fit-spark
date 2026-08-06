@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { ArrowRight, CalendarDays, Dumbbell } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -7,6 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { weeklyWorkoutPlanSchema } from "@/features/workout-plan/schema";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
+import { startTodayWorkout } from "@/features/workout-plan/server/tracker-actions";
+import { ExerciseTracker } from "@/features/workout-plan/components/exercise-tracker";
+import { RestDayDashboard } from "@/features/workout-plan/components/rest-day-dashboard";
 
 export default async function HomePage() {
   const { userId } = await auth();
@@ -26,140 +29,63 @@ export default async function HomePage() {
   const plan = savedPlan
     ? weeklyWorkoutPlanSchema.parse(savedPlan.plan)
     : undefined;
-  const today = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
-    new Date(),
-  );
-  const todayWorkout = plan?.[today];
+
+  let session = null;
+  let originalPlan = null;
+
+  if (plan) {
+    const todayName = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+      new Date(),
+    );
+    // Find a matching day in the plan (case-insensitive)
+    const matchedKey = Object.keys(plan).find(
+      (key) => key.toLowerCase() === todayName.toLowerCase()
+    );
+    originalPlan = matchedKey ? plan[matchedKey] : null;
+    session = await startTodayWorkout();
+  }
 
   return (
-    <main className="min-h-[calc(100svh-4rem)] bg-slate-50 py-12">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6">
-        <p className="text-sm font-semibold tracking-wider text-blue-700 uppercase">
-          Welcome to FitSpark
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-          Know what to do next at the gym.
-        </h1>
-        <p className="text-muted-foreground mt-3 max-w-2xl text-lg leading-8">
-          Your selected equipment, goals, and completed sessions shape the next
-          workout in your plan.
-        </p>
+    <main className="min-h-screen bg-ambient-aurora bg-background py-24 relative overflow-hidden">
+      {/* Subtle glowing orb in background */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[120px] pointer-events-none opacity-50" />
+      
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 relative z-10">
+        <div className="mt-4 mb-8">
+          <h1 className="text-5xl font-black tracking-tighter sm:text-7xl italic text-foreground animate-in fade-in slide-in-from-bottom-6 duration-1000">
+            Know what to do next.
+          </h1>
+          <p className="text-muted-foreground mt-6 max-w-2xl text-xl leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-150">
+            Your selected equipment, goals, and completed sessions shape the exact sequence you need to follow.
+          </p>
+        </div>
 
-        {todayWorkout ? (
-          <Card className="mt-8 overflow-hidden border-blue-200 shadow-xl shadow-blue-950/5">
-            <CardContent className="bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-8 sm:p-10 dark:from-blue-950/40 dark:via-slate-900 dark:to-cyan-950/30">
-              <p className="text-sm font-semibold tracking-wider text-blue-700 uppercase">
-                {today}
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold">
-                Today&apos;s workout
-              </h2>
-              <div className="text-muted-foreground mt-5 space-y-4 leading-7">
-                {todayWorkout.warmup && todayWorkout.warmup.length > 0 && (
-                  <p>
-                    <strong>Warm-up:</strong>{" "}
-                    {todayWorkout.warmup
-                      .map((e) => `${e.name} (${e.setsAndReps})`)
-                      .join(", ")}
-                  </p>
-                )}
-                {todayWorkout.mainWorkout &&
-                  todayWorkout.mainWorkout.length > 0 && (
-                    <p>
-                      <strong>Main workout:</strong>{" "}
-                      {todayWorkout.mainWorkout
-                        .map((e) => `${e.name} (${e.setsAndReps})`)
-                        .join(", ")}
-                    </p>
-                  )}
-                {todayWorkout.cardio && todayWorkout.cardio.length > 0 && (
-                  <p>
-                    <strong>Cardio:</strong>{" "}
-                    {todayWorkout.cardio
-                      .map((e) => `${e.name} (${e.setsAndReps})`)
-                      .join(", ")}
-                  </p>
-                )}
-                {todayWorkout.cooldown && todayWorkout.cooldown.length > 0 && (
-                  <p>
-                    <strong>Cool-down:</strong>{" "}
-                    {todayWorkout.cooldown
-                      .map((e) => `${e.name} (${e.setsAndReps})`)
-                      .join(", ")}
-                  </p>
-                )}
-              </div>
-              <a
-                href="/workoutplan"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "lg" }),
-                  "mt-6",
-                )}
-              >
-                View full plan
-                <ArrowRight aria-hidden="true" />
-              </a>
-            </CardContent>
-          </Card>
+        {session && originalPlan ? (
+          <div className="mt-0">
+            <ExerciseTracker session={session} originalPlan={originalPlan} />
+          </div>
         ) : plan ? (
-          <Card className="mt-8 border-blue-200 shadow-sm">
-            <CardContent className="p-8 sm:p-10">
-              <CalendarDays
-                className="size-10 text-blue-600"
-                aria-hidden="true"
-              />
-              <h2 className="mt-5 text-2xl font-semibold">Recovery day</h2>
-              <p className="text-muted-foreground mt-3 leading-7">
-                There is no workout scheduled for today. Check your full plan
-                for the next session.
+          <RestDayDashboard plan={plan} todayName={new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date())} />
+        ) : (
+          <Card className="mt-0 overflow-hidden border-primary/20 shadow-[0_0_50px_rgba(139,92,246,0.1)] bg-card/60 backdrop-blur-3xl animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300">
+            <CardContent className="p-12 text-center">
+              <div className="mx-auto size-16 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                <CalendarDays className="size-8 text-primary" />
+              </div>
+              <h2 className="text-3xl font-black italic tracking-tight">Build your first program</h2>
+              <p className="text-muted-foreground mt-4 max-w-lg mx-auto text-lg leading-relaxed">
+                Choose the equipment you can use, tell us your goal, and we&apos;ll generate a structured sequence for your week.
               </p>
               <a
                 href="/workoutplan"
                 className={cn(
                   buttonVariants({ size: "lg" }),
-                  "mt-6 bg-blue-600 hover:bg-blue-700",
+                  "mt-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground transition-all px-8 h-14 text-lg font-semibold",
                 )}
               >
-                View full plan
-                <ArrowRight aria-hidden="true" />
+                Generate my program
+                <ArrowRight aria-hidden="true" className="ml-2 size-5" />
               </a>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="mt-8 border-blue-200 shadow-sm">
-            <CardContent className="p-8 sm:p-10">
-              <CalendarDays
-                className="size-10 text-blue-600"
-                aria-hidden="true"
-              />
-              <h2 className="mt-5 text-2xl font-semibold">
-                Build your first plan
-              </h2>
-              <p className="text-muted-foreground mt-3 max-w-xl leading-7">
-                Choose the equipment you can use, tell us your goal, and get a
-                structured sequence for your week.
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href="/workoutplan"
-                  className={cn(
-                    buttonVariants({ size: "lg" }),
-                    "bg-blue-600 hover:bg-blue-700",
-                  )}
-                >
-                  Build my plan
-                  <ArrowRight aria-hidden="true" />
-                </a>
-                <a
-                  href="/explore"
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "lg" }),
-                  )}
-                >
-                  <Dumbbell aria-hidden="true" />
-                  Explore equipment
-                </a>
-              </div>
             </CardContent>
           </Card>
         )}

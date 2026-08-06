@@ -33,7 +33,6 @@ export const WorkoutPlanState = Annotation.Root({
     value: (x, y) => y ?? x,
     default: () => 0,
   }),
-  // Coach insight produced by muscleGapAnalyzer
   coachInsight: Annotation<{
     coveredGroups: string[];
     missingGroups: string[];
@@ -43,6 +42,10 @@ export const WorkoutPlanState = Annotation.Root({
   } | null>({
     value: (x, y) => y ?? x,
     default: () => null,
+  }),
+  instructionsMap: Annotation<Record<string, string[]>>({
+    value: (x, y) => ({ ...x, ...y }),
+    default: () => ({}),
   }),
 });
 
@@ -240,6 +243,7 @@ type PineconeHit = {
     secondary_muscles?: string;
     mechanic?: string;
     force?: string;
+    text?: string;
   };
 };
 
@@ -289,6 +293,7 @@ async function fetchExercisesForEquipment(
         "secondary_muscles",
         "mechanic",
         "force",
+        "text",
       ],
     }),
   });
@@ -336,6 +341,7 @@ async function exerciseRetriever(
 
   const allHits: PineconeHit[] = [];
   const seenNames = new Set<string>();
+  const instructionsMap: Record<string, string[]> = {};
 
   await Promise.all(
     displayNames.map(async (equipName: string) => {
@@ -355,6 +361,22 @@ async function exerciseRetriever(
         if (name && !seenNames.has(name)) {
           seenNames.add(name);
           allHits.push(h);
+
+          // Extract instructions from the text field
+          const text = h.fields?.text || "";
+          const instructionsRaw =
+            text.split("Instructions:\\n")[1] ||
+            text.split("Instructions:\n")[1] ||
+            "";
+          const instructions = instructionsRaw
+            .split("\\n")
+            .flatMap((s) => s.split("\n"))
+            .filter((line: string) => line.trim().length > 0)
+            .map((line: string) => line.replace(/^\\d+\\.\\s*/, "").trim());
+
+          if (instructions.length > 0) {
+            instructionsMap[name] = instructions;
+          }
         }
       }
     }),
@@ -364,7 +386,7 @@ async function exerciseRetriever(
   console.log(
     `   [RAG] ${exercises.length} unique exercises across ${displayNames.length} equipment types`,
   );
-  return { exercises };
+  return { exercises, instructionsMap };
 }
 
 async function muscleGapAnalyzer(
@@ -473,7 +495,7 @@ Use the metadata (primary muscles, secondary muscles, mechanic, force, level) to
 - Avoid hitting the same muscles on consecutive days
 - Mix compound and isolation moves purposefully
 - Scale sets/reps to the user's experience level
-- Write coach notes that explain muscle targeting, pairing rationale, and form tips
+- Write programming notes that explain muscle targeting and pairing rationale ONLY. (DO NOT write form tips or instructions).
 
 ${safetyContext}
 
@@ -482,7 +504,7 @@ RULES:
 2. EQUIPMENT STRICT: mainWorkout uses ONLY the user's equipment. No bodyweight exercises (push-ups, pull-ups, dips, air squats) unless "Bodyweight" is in equipment list.
 3. NO REST DAYS: Non-training days = "Active Recovery" or "Mobility" using exercises from the list (light sets, light weight). If no suitable exercises, omit that day entirely.
 4. USE ALL EXERCISES: Distribute ALL available exercises across the week — don't repeat the same 3 every day.
-5. RICH NOTES: Every exercise must have a 'notes' field explaining: target muscle, why it's placed here, pairing logic, form tip for this experience level.
+5. RICH NOTES: Every exercise must have a 'notes' field explaining: target muscle, why it's placed here, pairing logic. (Do NOT include step-by-step instructions or form tips. Do NOT prefix the note with "Coach: " or "Note: ").
 6. SCHEMA:
    type ExerciseDetail = { name: string; equipment: string; setsAndReps: string; notes: string };
    type DailyWorkoutPlan = { mainWorkout?: ExerciseDetail[]; cardio?: ExerciseDetail[] };
@@ -492,7 +514,39 @@ RULES:
 Return ONLY valid JSON starting with '{'. No markdown, no preamble.`;
 
   const response = await llm.invoke(prompt);
-  return { plan: response.content.toString() };
+  let planStr = response.content.toString();
+
+  // Merge instructions from instructionsMap
+  try {
+    const cleanedStr = planStr
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+    const parsedPlan = JSON.parse(cleanedStr) as Record<
+      string,
+      Record<string, Record<string, unknown>[]>
+    >;
+    const map = state.instructionsMap || {};
+
+    for (const sections of Object.values(parsedPlan)) {
+      if (typeof sections !== "object" || !sections) continue;
+      for (const exercises of Object.values(sections)) {
+        if (Array.isArray(exercises)) {
+          for (const ex of exercises) {
+            const exName = typeof ex.name === "string" ? ex.name : null;
+            if (exName && map[exName]) {
+              ex.instructions = map[exName];
+            }
+          }
+        }
+      }
+    }
+    planStr = JSON.stringify(parsedPlan, null, 2);
+  } catch (e) {
+    console.error("Failed to merge instructions:", e);
+  }
+
+  return { plan: planStr };
 }
 
 async function safetyEvaluator(

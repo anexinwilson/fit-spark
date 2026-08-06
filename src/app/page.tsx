@@ -98,26 +98,26 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-20 sm:py-24">
+      <section className="py-20 sm:py-24 bg-background">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="text-3xl font-black italic tracking-tighter sm:text-5xl text-foreground">
               Less guessing. More confidence.
             </h2>
-            <p className="text-muted-foreground mt-4 text-lg">
+            <p className="text-muted-foreground mt-4 text-xl">
               The useful parts of a coach, organized into a calm experience for
               someone who is still learning the gym.
             </p>
           </div>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {benefits.map(({ icon: Icon, title, description }) => (
-              <Card key={title} className="h-full border-slate-200 shadow-sm">
-                <CardContent className="p-6">
-                  <div className="mb-5 flex size-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                    <Icon aria-hidden="true" />
+              <Card key={title} className="h-full border-white/10 bg-card/40 backdrop-blur-xl shadow-2xl">
+                <CardContent className="p-8">
+                  <div className="mb-6 flex size-14 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+                    <Icon aria-hidden="true" className="size-7" />
                   </div>
-                  <h3 className="text-xl font-semibold">{title}</h3>
-                  <p className="text-muted-foreground mt-3 leading-7">
+                  <h3 className="text-2xl font-bold text-white">{title}</h3>
+                  <p className="text-muted-foreground mt-4 leading-relaxed text-lg">
                     {description}
                   </p>
                 </CardContent>
@@ -127,19 +127,20 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="how-it-works" className="bg-slate-50 py-20 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
+      <section id="how-it-works" className="bg-ambient-aurora py-24 sm:py-32 relative">
+        <div className="absolute inset-0 bg-background/50 pointer-events-none" />
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+          <h2 className="text-center text-4xl font-black italic tracking-tighter sm:text-6xl text-foreground">
             How it works
           </h2>
-          <ol className="mt-12 grid gap-8 md:grid-cols-3">
+          <ol className="mt-16 grid gap-12 md:grid-cols-3">
             {steps.map(([number, title, description]) => (
               <li key={number} className="text-center">
-                <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-blue-600 text-xl font-bold text-white">
+                <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-2xl font-black italic text-primary-foreground shadow-[0_0_30px_rgba(139,92,246,0.3)]">
                   {number}
                 </span>
-                <h3 className="mt-5 text-xl font-semibold">{title}</h3>
-                <p className="text-muted-foreground mt-3 leading-7">
+                <h3 className="mt-6 text-2xl font-bold text-white">{title}</h3>
+                <p className="text-muted-foreground mt-4 leading-relaxed text-lg">
                   {description}
                 </p>
               </li>
