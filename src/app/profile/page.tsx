@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { availablePlans } from "@/features/billing/plans";
+import { availablePlans } from "@/lib/billing/plans";
 
 type SubscriptionStatus = {
   subscription: {

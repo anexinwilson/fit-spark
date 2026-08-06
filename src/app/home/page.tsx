@@ -4,12 +4,12 @@ import { redirect } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { weeklyWorkoutPlanSchema } from "@/features/workout-plan/schema";
+import { weeklyWorkoutPlanSchema } from "@/lib/workout-plan/schema";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
-import { startTodayWorkout } from "@/features/workout-plan/server/tracker-actions";
-import { ExerciseTracker } from "@/features/workout-plan/components/exercise-tracker";
-import { RestDayDashboard } from "@/features/workout-plan/components/rest-day-dashboard";
+import { startTodayWorkout } from "@/actions/tracker";
+import { ExerciseTracker } from "@/components/workout-plan/exercise-tracker";
+import { RestDayDashboard } from "@/components/workout-plan/rest-day-dashboard";
 
 export default async function HomePage() {
   const { userId } = await auth();

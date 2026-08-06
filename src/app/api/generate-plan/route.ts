@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { workoutPlanWorkflow } from "@/features/workout-generator/graph";
+import { workoutPlanWorkflow } from "@/lib/workout-generator/graph";
 import { RateLimitQuotaExhaustedError } from "@/lib/errors";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -57,6 +57,40 @@ export async function POST(req: Request) {
       ? " (Must include Cardio)"
       : " (No Cardio)";
 
+    // Fetch past performance (all time, aggregated)
+    const allSessions = await prisma.workoutSession.findMany({
+      where: { userId },
+      include: {
+        exercises: {
+          include: { sets: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const latestExerciseStats = new Map<string, { completed: number; total: number }>();
+    
+    for (const session of allSessions) {
+      for (const ex of session.exercises) {
+        if (!latestExerciseStats.has(ex.exerciseName)) {
+          const completedSets = ex.sets.filter(s => s.completed).length;
+          const totalSets = ex.sets.length;
+          if (totalSets > 0) {
+            latestExerciseStats.set(ex.exerciseName, { completed: completedSets, total: totalSets });
+          }
+        }
+      }
+    }
+
+    let pastPerformance = "";
+    if (latestExerciseStats.size > 0) {
+      const perfLines = ["Most recent performance per exercise:"];
+      for (const [exName, stats] of latestExerciseStats.entries()) {
+        perfLines.push(`- ${exName}: completed ${stats.completed}/${stats.total} sets`);
+      }
+      pastPerformance = perfLines.join("\n");
+    }
+
     const initialState = {
       goal: fitnessGoal + goalModifier,
       experience: experienceLevel,
@@ -64,6 +98,7 @@ export async function POST(req: Request) {
       trainingDays: trainingDays,
       injuries: limitations || "None",
       equipment: parsedEquipment,
+      pastPerformance: pastPerformance || null,
     };
 
     const encoder = new TextEncoder();
@@ -105,12 +140,16 @@ export async function POST(req: Request) {
                   "[muscleGapAnalyzer] Detecting coverage gaps...",
                   "[muscleGapAnalyzer] Generating coach recommendations...",
                 ];
-              } else if (nodeName === "planBuilder") {
-                statusMsg = "Building weekly schedule...";
+              } else if (nodeName === "skeletonArchitect") {
+                statusMsg = "Building weekly workout structure...";
                 logLines = [
-                  "[planBuilder] Preparing prompt with retrieved exercises...",
-                  "[planBuilder] Invoking Gemini model (gemini-3.6-flash)...",
-                  "[planBuilder] Streaming plan tokens...",
+                  "[skeletonArchitect] Distributing exercises across training days...",
+                  "[skeletonArchitect] Invoking Gemini 3.6 Flash...",
+                ];
+              } else if (nodeName === "dailyPlanBuilder") {
+                statusMsg = "Writing detailed daily plans in parallel...";
+                logLines = [
+                  "[dailyPlanBuilder] Generating all training days concurrently...",
                 ];
               } else if (nodeName === "safetyEvaluator") {
                 statusMsg = "Evaluating safety & compliance...";
@@ -165,9 +204,10 @@ export async function POST(req: Request) {
                     ),
                   );
                 }
-              } else if (nodeName === "planBuilder") {
-                completionLog =
-                  "[planBuilder] Done. Weekly schedule generated.";
+              } else if (nodeName === "skeletonArchitect") {
+                completionLog = "[skeletonArchitect] Done. Weekly structure assigned.";
+              } else if (nodeName === "dailyPlanBuilder") {
+                completionLog = "[dailyPlanBuilder] Done. Daily plan generated.";
               } else if (nodeName === "safetyEvaluator") {
                 const issues =
                   (event.data?.output?.safetyIssues as string[]) ?? [];
@@ -210,14 +250,16 @@ export async function POST(req: Request) {
             return;
           }
 
-          let parsedPlan = {};
+          let parsedPlan: Record<string, unknown> = {};
           try {
-            const planStr =
-              typeof finalState.plan === "string" ? finalState.plan : "";
-            const cleanedStr =
-              planStr.replace(/```json/g, "").replace(/```/g, "") || "{}";
-            parsedPlan = JSON.parse(cleanedStr);
-            
+            // planAggregator removed — merge dailyPlans array directly
+            const dailyPlans = (finalState.dailyPlans as Record<string, unknown>[] | undefined) ?? [];
+            for (const dp of dailyPlans) {
+              if ((dp as any) !== "CLEAR") {
+                Object.assign(parsedPlan, dp);
+              }
+            }
+
             // Clean up uncompleted sessions from any previous plan
             await prisma.workoutSession.deleteMany({
               where: {
@@ -225,14 +267,14 @@ export async function POST(req: Request) {
                 completedAt: null
               }
             });
-            // Save the new blueprint
+            // Save the new blueprint (cast needed: Prisma JSON field accepts Record<string, unknown>)
             await prisma.workoutPlan.upsert({
               where: { userId },
-              create: { userId, plan: parsedPlan },
-              update: { plan: parsedPlan },
+              create: { userId, plan: parsedPlan as any },
+              update: { plan: parsedPlan as any },
             });
           } catch (e) {
-            console.error("Failed to parse LLM JSON or save to DB:", e);
+            console.error("Failed to merge dailyPlans or save to DB:", e);
           }
 
           controller.enqueue(

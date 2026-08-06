@@ -1,4 +1,4 @@
-import { searchEquipmentRows } from "@/features/equipment/search-equipment-core";
+import { searchEquipmentRows } from "@/lib/equipment/search-equipment-core";
 
 const rows = [
   {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { processStripeEvent } from "@/features/billing/stripe-webhook";
+import { processStripeEvent } from "@/lib/billing/stripe-webhook";
 import { getErrorMessage } from "@/lib/errors";
 import { requireServerEnvironment } from "@/lib/server-env";
 import { getStripeClient } from "@/lib/stripe";

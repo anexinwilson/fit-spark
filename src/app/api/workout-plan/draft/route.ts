@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   type WorkoutPlanDraft,
   workoutPlanDraftSchema,
-} from "@/features/workout-plan/schema";
+} from "@/lib/workout-plan/schema";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 

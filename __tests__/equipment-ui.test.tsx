@@ -16,9 +16,9 @@ import {
 } from "@testing-library/react";
 
 import EquipmentPage from "@/app/equipment/page";
-import { EquipmentCard } from "@/features/equipment/equipment-card";
-import { EquipmentCatalog } from "@/features/equipment/equipment-catalog";
-import type { EquipmentItem } from "@/features/equipment/types";
+import { EquipmentCard } from "@/components/equipment/equipment-card";
+import { EquipmentCatalog } from "@/components/equipment/equipment-catalog";
+import type { EquipmentItem } from "@/lib/equipment/types";
 
 const MOCK_EQUIPMENT_RESPONSE = {
   success: true,

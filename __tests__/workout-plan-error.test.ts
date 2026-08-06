@@ -2,13 +2,13 @@ import { RateLimitQuotaExhaustedError } from "@/lib/errors";
 import { POST } from "@/app/api/generate-plan/route";
 import { createRequest } from "./test-utils";
 
-jest.mock("@/features/workout-generator/graph", () => ({
+jest.mock("@/lib/workout-generator/graph", () => ({
   workoutPlanWorkflow: {
     streamEvents: jest.fn(),
   },
 }));
 
-import { workoutPlanWorkflow } from "@/features/workout-generator/graph";
+import { workoutPlanWorkflow } from "@/lib/workout-generator/graph";
 
 const mockedStreamEvents = jest.mocked(workoutPlanWorkflow.streamEvents);
 

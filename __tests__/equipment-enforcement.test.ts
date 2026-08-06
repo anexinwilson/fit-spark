@@ -1,4 +1,4 @@
-import { workoutPlanWorkflow } from "../src/features/workout-generator/graph";
+import { workoutPlanWorkflow } from "../src/lib/workout-generator/graph";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { createRequest, readResponse } from "./test-utils";
 
@@ -156,9 +156,12 @@ describe("Equipment Enforcement & Programmatic Evals", () => {
       );
       expect(bodyweightRetrieved).toHaveLength(0);
 
-      // Parse plan and verify zero bodyweight exercises in mainWorkout
-      const parsedPlan = JSON.parse(result.plan as string);
-      const mondayMain = parsedPlan.Monday.mainWorkout;
+      // Parse plan from dailyPlans array (planAggregator removed — reducer merges outputs)
+      const parsedPlan: Record<string, unknown> = {};
+      for (const dp of result.dailyPlans as Record<string, unknown>[]) {
+        if ((dp as any) !== "CLEAR") Object.assign(parsedPlan, dp);
+      }
+      const mondayMain = (parsedPlan.Monday as any)?.mainWorkout ?? [];
 
       const bodyweightInMain = mondayMain.filter(
         (ex: { name: string; equipment: string }) =>

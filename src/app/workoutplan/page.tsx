@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
-import { WorkoutPlanForm } from "@/features/workout-plan/workout-plan-form";
-import { weeklyWorkoutPlanSchema } from "@/features/workout-plan/schema";
+import { WorkoutPlanForm } from "@/components/workout-plan/workout-plan-form";
+import { weeklyWorkoutPlanSchema } from "@/lib/workout-plan/schema";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 

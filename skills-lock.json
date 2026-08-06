@@ -25,6 +25,12 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "93f53fd1c0352d3d7ec17b8f73d7351bf76f4821e55d123c9d2abc2c53ba48e4"
     },
+    "langgraph-docs": {
+      "source": "langchain-ai/deepagents",
+      "sourceType": "github",
+      "skillPath": "libs/cli/examples/skills/langgraph-docs/SKILL.md",
+      "computedHash": "bc33fbf2b3d1b0f8a93d2ccc52e1fef3ba193059418bccf9583f0c71780f6985"
+    },
     "pinecone-docs": {
       "source": "pinecone-io/skills",
       "sourceType": "github",

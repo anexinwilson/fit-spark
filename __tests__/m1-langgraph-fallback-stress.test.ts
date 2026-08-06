@@ -1,4 +1,4 @@
-import { workoutPlanWorkflow } from "../src/features/workout-generator/graph";
+import { workoutPlanWorkflow } from "../src/lib/workout-generator/graph";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 // Mock Pinecone fetch globally
@@ -118,9 +118,13 @@ describe("Milestone 1 LangGraph Fallback Stress Tests", () => {
     };
 
     const result2 = await workoutPlanWorkflow.invoke(initialState);
-    expect(Boolean(result2.plan)).toBe(true);
-    expect(attemptedModels[0]).toBe("gemini-flash-latest");
-    expect(attemptedModels[1]).toBe("gemini-1.5-flash-8b");
+    const plan2: Record<string, unknown> = {};
+    for (const dp of result2.dailyPlans as Record<string, unknown>[]) {
+      if ((dp as any) !== "CLEAR") Object.assign(plan2, dp);
+    }
+    expect(Object.keys(plan2).length).toBeGreaterThan(0);
+    expect(attemptedModels[0]).toBe("gemini-3.6-flash");
+    expect(attemptedModels[1]).toBe("gemini-3.5-flash");
   });
 
   it("falls back to gemini-1.5-pro when gemini-flash-latest and gemini-1.5-flash-8b return HTTP 429", async () => {
@@ -157,11 +161,15 @@ describe("Milestone 1 LangGraph Fallback Stress Tests", () => {
     };
 
     const result3 = await workoutPlanWorkflow.invoke(initialState);
-    expect(Boolean(result3.plan)).toBe(true);
+    const plan3: Record<string, unknown> = {};
+    for (const dp of result3.dailyPlans as Record<string, unknown>[]) {
+      if ((dp as any) !== "CLEAR") Object.assign(plan3, dp);
+    }
+    expect(Object.keys(plan3).length).toBeGreaterThan(0);
     expect(attemptedModels).toEqual([
-      "gemini-flash-latest",
-      "gemini-1.5-flash-8b",
-      "gemini-1.5-pro",
+      "gemini-3.6-flash",
+      "gemini-3.5-flash",
+      "gemini-3.0-flash",
     ]);
   });
 

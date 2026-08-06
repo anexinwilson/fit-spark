@@ -1,6 +1,6 @@
 import { evaluate } from "langsmith/evaluation";
 import { Client } from "langsmith";
-import { workoutPlanWorkflow } from "../src/features/workout-generator/graph";
+import { workoutPlanWorkflow } from "../src/lib/workout-generator/graph";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import * as dotenv from "dotenv";
 

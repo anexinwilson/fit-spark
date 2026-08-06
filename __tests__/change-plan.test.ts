@@ -13,7 +13,7 @@ const mockStripe = {
 jest.mock("@/lib/stripe", () => ({
   getStripeClient: () => mockStripe,
 }));
-jest.mock("@/features/billing/plans", () => ({
+jest.mock("@/lib/billing/plans", () => ({
   isPlanInterval: (value: string) => ["week", "month", "year"].includes(value),
   getPriceId: () => "price_month",
 }));

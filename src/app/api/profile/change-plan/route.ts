@@ -1,4 +1,4 @@
-import { getPriceId, isPlanInterval } from "@/features/billing/plans";
+import { getPriceId, isPlanInterval } from "@/lib/billing/plans";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 import { NextRequest, NextResponse } from "next/server";

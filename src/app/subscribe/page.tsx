@@ -14,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { availablePlans } from "@/features/billing/plans";
+import { availablePlans } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
 type CheckoutResponse = { url: string };

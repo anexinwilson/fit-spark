@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Dumbbell } from "lucide-react";
 
-import { EquipmentCatalog } from "@/features/equipment/equipment-catalog";
+import { EquipmentCatalog } from "@/components/equipment/equipment-catalog";
 
 export const metadata: Metadata = {
   title: "Explore Equipment | FitSpark",

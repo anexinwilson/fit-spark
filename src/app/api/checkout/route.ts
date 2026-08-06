@@ -1,4 +1,4 @@
-import { getPriceId, isPlanInterval } from "@/features/billing/plans";
+import { getPriceId, isPlanInterval } from "@/lib/billing/plans";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { requireServerEnvironment } from "@/lib/server-env";
 import { getStripeClient } from "@/lib/stripe";

@@ -1,7 +1,10 @@
-import { workoutPlanWorkflow } from "../src/features/workout-generator/graph";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+
+import { workoutPlanWorkflow } from "../src/lib/workout-generator/graph";
 
 async function runEvals() {
-  console.log("=== Running Formal Evals on LangGraph (Phase 1b) ===\n");
+  console.log("=== Running Formal Evals on LangGraph ===\n");
 
   const edgeCases = [
     {
@@ -24,13 +27,7 @@ async function runEvals() {
         daysPerWeek: 5,
         trainingDays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
         injuries: "None",
-        equipment: [
-          "Barbell",
-          "Dumbbells",
-          "Cable Machine",
-          "Pull-up Bar",
-          "Bench",
-        ],
+        equipment: ["Barbell", "Dumbbells", "Cable Machine", "Pull-up Bar"],
       },
     },
   ];
@@ -52,8 +49,15 @@ async function runEvals() {
         );
         console.log(`   [Reason]: ${finalState.safetyIssues[0]}`);
       } else {
+        // Merge dailyPlans (planAggregator removed — reducer handles merging)
+        const planMap: Record<string, unknown> = {};
+        for (const dp of (finalState.dailyPlans ?? []) as Record<string, unknown>[]) {
+          if ((dp as any) !== "CLEAR") Object.assign(planMap, dp);
+        }
+        const preview = JSON.stringify(planMap).substring(0, 200);
         console.log(`   [PASS] Produced safe plan.`);
-        console.log(`   [Extract]: ${finalState.plan?.substring(0, 200)}...`);
+        console.log(`   [Days]: ${Object.keys(planMap).join(", ")}`);
+        console.log(`   [Preview]: ${preview}...`);
         passed++;
       }
     } catch (err) {
