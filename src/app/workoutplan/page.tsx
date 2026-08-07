@@ -2,12 +2,16 @@ import { redirect } from "next/navigation";
 
 import { WorkoutPlanForm } from "@/components/workout-plan/workout-plan-form";
 import { weeklyWorkoutPlanSchema } from "@/lib/workout-plan/schema";
+import { auth } from "@clerk/nextjs/server";
 import { getAuthenticatedUserId } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function WorkoutPlanPage() {
   const userId = await getAuthenticatedUserId();
-  if (!userId) redirect("/sign-up");
+  if (!userId) {
+    const { redirectToSignIn } = await auth();
+    return redirectToSignIn();
+  }
 
   const profile =
     userId === "e2e_test_user_id"

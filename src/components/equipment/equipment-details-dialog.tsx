@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,10 +54,14 @@ function EquipmentDetailsContent({
     <DialogContent className="max-w-2xl">
       {hasImage ? (
         <div className="bg-muted relative h-64 w-full overflow-hidden rounded-lg">
-          <img
+          <Image
             src={equipment.image_urls[0]}
             alt={equipment.name}
-            className="h-full w-full object-cover"
+            fill
+            unoptimized
+            sizes="(max-width: 1024px) 100vw, 42rem"
+            priority
+            className="object-contain"
             onError={() => setImageError(true)}
           />
         </div>

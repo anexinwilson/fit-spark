@@ -58,3 +58,6 @@ next-env.d.ts
 !**/backend.hcl.example
 *.tfplan
 crash.log
+
+# Agent files
+.agents/

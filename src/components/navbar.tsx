@@ -91,7 +91,7 @@ export default function NavBar() {
               className="h-10 px-4 text-white hover:bg-white/15 hover:text-white"
               render={<Link href="/profile#subscription" />}
             >
-              Profile & Billing
+              Profile
             </Button>
             <UserButton />
           </Show>

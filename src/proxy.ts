@@ -17,8 +17,11 @@ export default clerkMiddleware(
 
 export const config = {
   matcher: [
+    // Official Clerk-recommended matcher: run on all pages except static files
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/__clerk/:path*",
+    // Always run for API routes
     "/(api|trpc)(.*)",
+    // Always run for Clerk proxy routes
+    "/__clerk/(.*)",
   ],
 };

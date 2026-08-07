@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import {
   Activity,
   Check,
@@ -28,6 +29,7 @@ interface EquipmentCardProps {
   item: EquipmentItem;
   isOwned?: boolean;
   isToggling?: boolean;
+  priority?: boolean;
   onViewDetails: (item: EquipmentItem) => void;
   onToggleOwnership?: (item: EquipmentItem) => void;
 }
@@ -36,6 +38,7 @@ export function EquipmentCard({
   item,
   isOwned = false,
   isToggling = false,
+  priority = false,
   onViewDetails,
   onToggleOwnership,
 }: EquipmentCardProps) {
@@ -76,18 +79,21 @@ export function EquipmentCard({
   return (
     <Card className="group flex h-full flex-col overflow-hidden border-slate-200/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-slate-800">
       {/* Aesthetic Image/Icon Header */}
-      <div
-        className={`relative h-48 w-full overflow-hidden bg-gradient-to-br ${style.bg} flex items-center justify-center`}
-      >
+      <div className="relative h-48 w-full overflow-hidden bg-muted flex items-center justify-center">
         {hasImage ? (
-          <img
+          <Image
             src={item.image_urls[0]}
             alt={item.name}
-            className="h-full w-full bg-slate-100 object-contain p-2 transition-transform duration-300 group-hover:scale-[1.02] dark:bg-slate-900"
+            fill
+            unoptimized
+            sizes="(max-width: 768px) 100vw, 33vw"
+            priority={priority}
+            loading={priority ? 'eager' : 'lazy'}
+            className="object-contain transition-transform duration-300 group-hover:scale-[1.02]"
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="flex h-full items-center justify-center bg-red-950/80 p-6 text-center text-sm font-medium text-red-100">
+          <div className="flex h-full w-full items-center justify-center bg-red-950/80 p-6 text-center text-sm font-medium text-red-100">
             Equipment image failed to load.
           </div>
         )}
@@ -97,7 +103,7 @@ export function EquipmentCard({
         <div className="mb-2 flex flex-wrap items-center justify-between gap-1.5">
           <Badge
             variant="default"
-            className="bg-slate-900 capitalize dark:bg-slate-100"
+            className="bg-slate-900 text-slate-50 capitalize dark:bg-slate-100 dark:text-slate-900"
           >
             {item.category}
           </Badge>

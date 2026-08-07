@@ -110,10 +110,7 @@ export function EquipmentCatalog({
   }, [query, muscle, category, level]);
 
   React.useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchEquipment();
-    }, 250);
-    return () => clearTimeout(timer);
+    fetchEquipment();
   }, [fetchEquipment]);
 
   const handleResetFilters = () => {
@@ -308,9 +305,12 @@ export function EquipmentCatalog({
       </div>
 
       {/* Equipment Grid or Loading Skeleton or Empty State */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+      <div 
+        className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+        style={{ overflowAnchor: 'none', contain: 'layout' }}
+      >
+        {isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="flex h-[380px] flex-col overflow-hidden">
               <Skeleton className="h-48 w-full" />
               <CardHeader className="space-y-2">
@@ -332,11 +332,9 @@ export function EquipmentCatalog({
                 <Skeleton className="h-9 w-full" />
               </CardFooter>
             </Card>
-          ))}
-        </div>
-      ) : visibleResults.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {visibleResults.map((item) => (
+          ))
+        ) : visibleResults.length > 0 ? (
+          visibleResults.map((item, index) => (
             <EquipmentCard
               key={item.id}
               item={item}
@@ -344,29 +342,30 @@ export function EquipmentCatalog({
               isToggling={togglingId === item.id}
               onViewDetails={handleViewDetails}
               onToggleOwnership={handleToggleOwnership}
+              priority={index < 6}
             />
-          ))}
-        </div>
-      ) : (
-        <Card className="flex flex-col items-center justify-center p-12 text-center">
-          <div className="bg-muted mb-4 flex size-16 items-center justify-center rounded-full">
-            <Dumbbell className="text-muted-foreground size-8" />
-          </div>
-          <CardTitle className="text-foreground text-xl font-semibold">
-            {view === "mine"
-              ? "You have not added equipment yet"
-              : "No equipment matches your search"}
-          </CardTitle>
-          <Button
-            variant="outline"
-            onClick={handleResetFilters}
-            className="mt-6 gap-2"
-          >
-            <RotateCcw className="size-4" />
-            Reset All Filters
-          </Button>
-        </Card>
-      )}
+          ))
+        ) : (
+          <Card className="col-span-full flex flex-col items-center justify-center p-12 text-center">
+            <div className="bg-muted mb-4 flex size-16 items-center justify-center rounded-full">
+              <Dumbbell className="text-muted-foreground size-8" />
+            </div>
+            <CardTitle className="text-foreground text-xl font-semibold">
+              {view === "mine"
+                ? "You have not added equipment yet"
+                : "No equipment matches your search"}
+            </CardTitle>
+            <Button
+              variant="outline"
+              onClick={handleResetFilters}
+              className="mt-6 gap-2"
+            >
+              <RotateCcw className="size-4" />
+              Reset All Filters
+            </Button>
+          </Card>
+        )}
+      </div>
 
       <EquipmentDetailsDialog
         equipment={selectedEquipment}

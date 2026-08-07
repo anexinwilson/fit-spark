@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 import pg from "pg";
+import sharp from "sharp";
 import { normalizeEquipment } from "./equipment-normalization.mjs";
 
 const SOURCE_COMMIT = "b0eed061e1c832b3ed815fbaa4b45b3cdc14df49";
@@ -115,7 +116,7 @@ function equipmentCatalog(records) {
       existing.secondaryMuscles.add(muscle);
     }
     existing.exerciseCount += 1;
-    for (const imageUrl of record.image_urls) existing.imageUrls.add(imageUrl);
+    for (const imageUrl of record.source_image_urls) existing.imageUrls.add(imageUrl);
     bySourceValue.set(sourceValue, existing);
   }
 
@@ -128,9 +129,8 @@ function equipmentCatalog(records) {
   }));
 }
 
-async function syncEquipmentCatalog(config, records) {
+async function syncEquipmentCatalog(config, items) {
   const pool = new Pool({ connectionString: config.DATABASE_URL });
-  const items = equipmentCatalog(records);
   try {
     await pool.query("BEGIN");
     for (const item of items) {
@@ -254,20 +254,85 @@ export function normalizeExercises(input) {
   });
 }
 
-function imageContentType(imageUrl) {
-  const extension = new URL(imageUrl).pathname.split(".").pop()?.toLowerCase();
-  const contentTypes = {
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    png: "image/png",
-    webp: "image/webp",
-  };
-  const contentType = contentTypes[extension];
-  if (!contentType) {
-    throw new Error(`Unsupported exercise image type: ${imageUrl}`);
+function gcsObjectName(sourceUrl, exerciseName) {
+  const relativePath = new URL(sourceUrl).pathname.split("/exercises/")[1];
+  if (!relativePath) {
+    throw new Error(
+      `Exercise image path could not be determined: ${sourceUrl}`,
+    );
   }
-  return contentType;
+  const safeName = (exerciseName || "exercise").toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const cleanPath = relativePath.substring(0, relativePath.lastIndexOf('.')) || relativePath;
+  return `exercise-images/${SOURCE_COMMIT}/${safeName}-${cleanPath.replace(/\//g, '-')}.avif`;
 }
+
+function gcsImageUrl(bucket, objectName) {
+  return `https://storage.googleapis.com/${bucket}/${objectName.split("/").map(encodeURIComponent).join("/")}`;
+}
+
+async function uploadImage(fetchImpl, token, bucket, sourceUrl, exerciseName) {
+  const objectName = gcsObjectName(sourceUrl, exerciseName);
+  const existingObjectUrl = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(objectName)}`;
+  const existingObject = await fetchImpl(existingObjectUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (existingObject.ok) return gcsImageUrl(bucket, objectName);
+  if (existingObject.status !== 404) {
+    throw new Error(
+      `GCS object check failed with HTTP ${existingObject.status}: ${sourceUrl}`,
+    );
+  }
+
+  const response = await fetchImpl(sourceUrl);
+  if (!response.ok) {
+    throw new Error(
+      `Exercise image request failed with HTTP ${response.status}: ${sourceUrl}`,
+    );
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  // Compress raw image to AVIF using sharp
+  const avifBuffer = await sharp(Buffer.from(arrayBuffer)).avif({ quality: 65 }).toBuffer();
+
+  const uploadUrl = `https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(bucket)}/o?uploadType=media&name=${encodeURIComponent(objectName)}`;
+  const uploadResponse = await fetchImpl(uploadUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "image/avif",
+    },
+    body: avifBuffer,
+  });
+  if (!uploadResponse.ok) {
+    const message = await uploadResponse.text();
+    throw new Error(
+      `GCS image upload failed with HTTP ${uploadResponse.status}: ${message}`,
+    );
+  }
+
+  // PATCH metadata (GCS media upload ignores Cache-Control headers)
+  const patchUrl = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(objectName)}`;
+  const patchResponse = await fetchImpl(patchUrl, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      cacheControl: "public, max-age=31536000, immutable",
+      metadata: {
+        alt: exerciseName
+      }
+    })
+  });
+  if (!patchResponse.ok) {
+     console.warn(`[WARNING] Failed to set metadata for ${objectName}`);
+  }
+
+  return gcsImageUrl(bucket, objectName);
+}
+
+// mirrorEquipmentImages removed, uploading inline instead
 
 async function getGoogleAccessToken(fetchImpl) {
   const response = await fetchImpl(GCS_METADATA_URL, {
@@ -288,73 +353,6 @@ async function getGoogleAccessToken(fetchImpl) {
     );
   }
   return payload.access_token;
-}
-
-function gcsObjectName(sourceUrl) {
-  const relativePath = new URL(sourceUrl).pathname.split("/exercises/")[1];
-  if (!relativePath) {
-    throw new Error(
-      `Exercise image path could not be determined: ${sourceUrl}`,
-    );
-  }
-  return `exercise-images/${SOURCE_COMMIT}/${relativePath}`;
-}
-
-function gcsImageUrl(bucket, objectName) {
-  return `https://storage.googleapis.com/${bucket}/${objectName.split("/").map(encodeURIComponent).join("/")}`;
-}
-
-async function uploadImage(fetchImpl, token, bucket, sourceUrl) {
-  const objectName = gcsObjectName(sourceUrl);
-  const existingObjectUrl = `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(objectName)}`;
-  const existingObject = await fetchImpl(existingObjectUrl, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (existingObject.ok) return gcsImageUrl(bucket, objectName);
-  if (existingObject.status !== 404) {
-    throw new Error(
-      `GCS object check failed with HTTP ${existingObject.status}: ${sourceUrl}`,
-    );
-  }
-
-  const response = await fetchImpl(sourceUrl);
-  if (!response.ok) {
-    throw new Error(
-      `Exercise image request failed with HTTP ${response.status}: ${sourceUrl}`,
-    );
-  }
-
-  const uploadUrl = `https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(bucket)}/o?uploadType=media&name=${encodeURIComponent(objectName)}`;
-  const uploadResponse = await fetchImpl(uploadUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Cache-Control": "public, max-age=31536000, immutable",
-      "Content-Type": imageContentType(sourceUrl),
-    },
-    body: new Uint8Array(await response.arrayBuffer()),
-  });
-  if (!uploadResponse.ok) {
-    const message = await uploadResponse.text();
-    throw new Error(
-      `GCS image upload failed with HTTP ${uploadResponse.status}: ${message}`,
-    );
-  }
-
-  return gcsImageUrl(bucket, objectName);
-}
-
-async function mirrorImages(fetchImpl, records, bucket) {
-  const token = await getGoogleAccessToken(fetchImpl);
-  const mirroredRecords = [];
-  for (const record of records) {
-    const imageUrls = [];
-    for (const sourceUrl of record.source_image_urls) {
-      imageUrls.push(await uploadImage(fetchImpl, token, bucket, sourceUrl));
-    }
-    mirroredRecords.push({ ...record, image_urls: imageUrls });
-  }
-  return mirroredRecords;
 }
 
 async function fetchSource(fetchImpl) {
@@ -420,22 +418,36 @@ async function verifyIndex(fetchImpl, config) {
 export async function ingestExercises({
   config = parseRuntimeConfig(process.env.FITSPARK_RUNTIME_CONFIG_JSON),
   fetchImpl = fetch,
+  isImagesOnly = false,
 } = {}) {
   const sourceRecords = await fetchSource(fetchImpl);
 
-  // Images are mirrored to Cloud Storage for reliable, long-lived serving.
-  // This step requires GCP credentials, which are available automatically
-  // when this script runs as a Cloud Run Job.
-  const records = await mirrorImages(
-    fetchImpl,
-    sourceRecords,
-    config.RAG_IMAGE_BUCKET,
-  );
+  // 1. Reuse existing equipmentCatalog logic to perfectly group everything
+  const equipments = equipmentCatalog(sourceRecords);
+  let uploadedCount = 0;
 
-  for (let offset = 0; offset < records.length; offset += BATCH_SIZE) {
-    // Strip image URLs before sending to Pinecone — images are a UI concern
-    // and are stored in Neon Postgres via syncEquipmentCatalog instead.
-    const pineconeRecords = records
+  // 2. Upload exactly 1 image per unique equipment category to GCS
+  const token = await getGoogleAccessToken(fetchImpl);
+  for (const equipment of equipments) {
+    if (equipment.imageUrls.length > 0) {
+      try {
+        const firstImageUrl = equipment.imageUrls[0];
+        const gcsUrl = await uploadImage(fetchImpl, token, config.RAG_IMAGE_BUCKET, firstImageUrl, equipment.displayName);
+        equipment.imageUrls = [gcsUrl]; // Replace massive array with the single GCS URL
+        uploadedCount++;
+      } catch (e) {
+        console.warn(`[WARNING] Failed to upload image for ${equipment.slug}: ${e.message}`);
+        equipment.imageUrls = [];
+      }
+    }
+  }
+
+  if (isImagesOnly) {
+    return { count: uploadedCount, isImagesOnly: true };
+  }
+
+  for (let offset = 0; offset < sourceRecords.length; offset += BATCH_SIZE) {
+    const pineconeRecords = sourceRecords
       .slice(offset, offset + BATCH_SIZE)
       .map((record) => {
         const copy = { ...record };
@@ -445,24 +457,32 @@ export async function ingestExercises({
       });
     await upsertBatch(fetchImpl, config, pineconeRecords);
     console.log(
-      `  Upserted ${Math.min(offset + BATCH_SIZE, records.length)}/${records.length} records...`,
+      `  Upserted ${Math.min(offset + BATCH_SIZE, sourceRecords.length)}/${sourceRecords.length} records...`,
     );
   }
 
-  const equipmentCount = await syncEquipmentCatalog(config, records);
+  // 4. Sync the fully processed equipments to Postgres
+  const equipmentCount = await syncEquipmentCatalog(config, equipments);
   const verification = await verifyIndex(fetchImpl, config);
-  return { count: records.length, equipmentCount, verification };
+  return { count: sourceRecords.length, equipmentCount, verification };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const result = await ingestExercises();
-  const hits = result.verification?.result?.hits ?? [];
-  console.log(`\nIndexed ${result.count} exercise records into Pinecone.`);
-  console.log(
-    `Synced ${result.equipmentCount} equipment records to PostgreSQL.`,
-  );
-  console.log(`Verification query returned ${hits.length} matches.`);
-  if (hits.length > 0) {
-    console.log("Sample match:", hits[0]?.fields?.name);
+  const isImagesOnly = process.argv.includes("--images-only");
+  const result = await ingestExercises({ isImagesOnly });
+  
+  if (result.isImagesOnly) {
+    console.log(`\nProcessed and uploaded ${result.count} images to GCS in AVIF format.`);
+    console.log(`Skipped Pinecone and PostgreSQL sync (--images-only flag active).`);
+  } else {
+    const hits = result.verification?.result?.hits ?? [];
+    console.log(`\nIndexed ${result.count} exercise records into Pinecone.`);
+    console.log(
+      `Synced ${result.equipmentCount} equipment records to PostgreSQL.`,
+    );
+    console.log(`Verification query returned ${hits.length} matches.`);
+    if (hits.length > 0) {
+      console.log("Sample match:", hits[0]?.fields?.name);
+    }
   }
 }

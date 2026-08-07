@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Geist } from "next/font/google";
 
@@ -6,6 +6,8 @@ import NavBar from "@/components/navbar";
 import { ReactQueryClientProvider } from "@/components/react-query-client-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { requireRuntimeConfigValue } from "@/lib/runtime-config";
+import { clerkAppearance } from "@/lib/clerk-theme";
+import { dark } from "@clerk/themes";
 
 import "./globals.css";
 
@@ -20,7 +22,9 @@ export const metadata: Metadata = {
     "A beginner-friendly workout coach that turns your goals, schedule, and available equipment into a clear plan.",
 };
 
-export const dynamic = "force-dynamic";
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
+};
 
 export default function RootLayout({
   children,
@@ -28,19 +32,29 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geist.variable} dark`}>
+    <html lang="en" className={`${geist.variable} dark`} suppressHydrationWarning>
+      <head>
+        {/* Pre-connect to Clerk CDN so JS bundle downloads start earlier */}
+        <link rel="preconnect" href="https://magnetic-lizard-97.clerk.accounts.dev" />
+        <link rel="dns-prefetch" href="https://magnetic-lizard-97.clerk.accounts.dev" />
+        <link rel="preconnect" href="https://accounts.dev" />
+      </head>
       <body
         className="bg-background text-foreground min-h-screen font-sans antialiased"
         suppressHydrationWarning
       >
         <ClerkProvider
+          appearance={{
+            elements: {
+              headerTitle: "text-2xl sm:text-3xl font-bold",
+              headerSubtitle: "text-base sm:text-lg",
+            }
+          } as any}
           publishableKey={requireRuntimeConfigValue(
             "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
           )}
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          signUpForceRedirectUrl="/create-profile"
-          signInForceRedirectUrl="/auth/continue"
+          signInForceRedirectUrl="/today"
+          signUpForceRedirectUrl="/today"
         >
           <ReactQueryClientProvider>
             <a

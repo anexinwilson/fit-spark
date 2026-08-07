@@ -1,6 +1,7 @@
 import { ArrowRight, CalendarDays, Dumbbell, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import heroBg from "../../public/homepage.webp";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,12 +49,14 @@ const steps = [
 export default function Home() {
   return (
     <>
-      <section className="relative isolate flex min-h-[calc(100svh-4rem)] items-center overflow-hidden bg-slate-950 text-white">
+      <section className="relative isolate flex min-h-[100svh] items-center overflow-hidden bg-slate-950 text-white">
         <Image
-          src="/homepage.webp"
+          src={heroBg}
           alt="A welcoming gym training space"
           fill
           priority
+          placeholder="blur"
+          unoptimized
           sizes="100vw"
           className="-z-20 object-cover"
         />
