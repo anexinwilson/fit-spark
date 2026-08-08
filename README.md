@@ -1,451 +1,182 @@
-# Fit Spark 
+# FitSpark
 
-Fit Spark is a Next.js app built with TypeScript that generates personalized workout plans based on fitness goals, available equipment, and experience level, offering weekly or monthly program options. It has social login and email sign-in through Clerk, flexible subscriptions via Stripe (weekly, monthly, yearly), and features to change or cancel plans anytime. The app also has profile management for viewing subscription details and uses Stripe webhooks to keep subscription status updated in real time.
+FitSpark is a workout planner built on Next.js. It uses a multi-agent LangGraph workflow and Retrieval-Augmented Generation (RAG) to dynamically generate personalized workout routines. 
 
-## Features
+For the exercise dataset, a custom ingestion pipeline normalizes over 800+ raw exercises from [yuhonas/free-exercise-db](https://github.com/yuhonas/free-exercise-db). The pipeline compresses the exercise images and stores them in Google Cloud Storage, saves the relational equipment data in NeonDB, and vectorizes the exercises into Pinecone. This ensures the planner only assigns biomechanically accurate exercises that strictly match the equipment you have available at home or in your gym.
 
-| Area | What's inside |
-| ---- | ------------- |
-| **Authentication** | Clerk (email-link + social) |
-| **Payments** | Stripe Checkout & webhooks (create / upgrade / cancel) |
-| **Workout AI** | GPT-4o prompt → JSON schedule rendered day-by-day |
-| **Database** | PostgreSQL on Neon, accessed through Prisma |
-| **UI** | Material UI, Emotion |
-| **State / Data-fetch** | React Query |
-| **Tests** | Jest + custom mocks (OpenAI, Stripe, Prisma, Clerk) |
+The app acts as an autonomous multi-agent fitness coach. It provides an interactive UI allowing users to log sets, track progress, and build historical memory, which the agentic LLM uses to progressively overload future workouts. 
 
-## Tech Stack (Core)
+Everything is designed for scalability and cost-efficiency. The infrastructure is modeled in Terraform and automatically deployed as containerized Cloud Run services to operate entirely within the free tier of Google Cloud Platform (GCP) via Cloud Build.
 
-- Next.js 15 – App Router
-- TypeScript
-- React 19
-- Prisma ORM → Neon Postgres
-- Stripe SDK
-- OpenAI SDK
+## 2. Architecture
 
-## Getting Started (Local Development)
+```mermaid
+graph TB
+    classDef primary fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
+    classDef secondary fill:#87CEEB,stroke:#333,stroke-width:2px,color:darkblue
+    classDef database fill:#E6E6FA,stroke:#333,stroke-width:2px,color:darkblue
+    classDef decision fill:#FFF8DC,stroke:#333,stroke-width:2px,color:darkgoldenrod
+    classDef llm fill:#FFE4B5,stroke:#333,stroke-width:2px,color:#5c3a21
 
-### 1. Clone & Install
+    NeonDB[(NeonDB / Prisma)]:::database
+    API[API Route]:::primary
 
+    %% API initializes State
+    NeonDB -.->|Step 1: Fetch Profile| API
+    API -->|Step 2: Init State| Start([__start__]):::secondary
+
+    Start --> Equip[equipmentResolver]:::secondary
+    Equip --> RAG[exerciseRetriever]:::secondary
+    
+    Pinecone[(Pinecone Vector DB)]:::database
+    
+    %% Explicit Tool Calling
+    RAG -.->|Step 3: Search Vectors| Pinecone
+    Pinecone -.->|Step 4: Return Matches| RAG
+    
+    RAG --> Gap[muscleGapAnalyzer]:::secondary
+    Gap --> Skeleton[skeletonArchitect]:::llm
+    Skeleton --> RouteSpawn{shouldSpawnDays}:::decision
+    
+    %% Visual Map-Reduce Fan-out
+    RouteSpawn -->|Day 1| Worker1[dailyPlanBuilder: Day 1]:::llm
+    RouteSpawn -->|Day 2| Worker2[dailyPlanBuilder: Day 2]:::llm
+    RouteSpawn -->|Day N| WorkerN[dailyPlanBuilder: Day N]:::llm
+    
+    Worker1 --> Safety[safetyEvaluator]:::secondary
+    Worker2 --> Safety
+    WorkerN --> Safety
+    
+    Safety --> RouteRetry{shouldRetry}:::decision
+    
+    RouteRetry -.->|Issues Found & Retry < 2| Skeleton
+    RouteRetry -->|Passed / Max Retries| End([__end__]):::secondary
+
+    %% API catches and saves State
+    End -->|Return Final Plan| API
+    API -.->|Step 5: Save Plan| NeonDB
+```
+
+### Core Infrastructure & Engineering Impact
+
+To orchestrate dynamic workout generation and ensure safety constraints without dropping requests, the system utilizes a compiled stateful pipeline. Every technology chosen serves a highly specific engineering purpose:
+
+* **Next.js & React**: Powers the interactive UI with TailwindCSS and shadcn/ui. The serverless API routes act as the secure entry point, triggering the LangGraph workflow while keeping all LLM prompts and Pinecone/NeonDB credentials strictly isolated from the client.
+* **LangGraph**: Orchestrates the multi-agent AI architecture. It routes data through specialized agent nodes instead of relying on a single unpredictable prompt. The pipeline queries NeonDB to inject the user's historical workout data, allowing the `skeletonArchitect` agent to analyze past progress alongside available equipment to build the weekly framework. Finally, the `dailyPlanBuilder` agent executes a parallel Map-Reduce fan-out to generate specific sets and reps for each day.
+* **Google AI Studio & Gemini LLM Cascade**: Provides the underlying LLM intelligence for the LangGraph agents. To ensure zero downtime and high availability, it utilizes a custom fallback cascade through Google AI Studio. Primary inference calls route to Gemini 3.6 Flash, automatically falling back to Gemini 3.5 Flash, and finally Gemini 3.0 if rate limits are encountered.
+* **Zod Schema Validation**: Enforces strict end-to-end type safety across the stack. Zod validates the runtime secrets injected from GCP, sanitizes frontend form inputs, and most importantly, forces the LangGraph agent's unstructured text generation into a deterministic, strictly typed JSON schema (`weeklyWorkoutPlanSchema`) before the final workout plan is allowed to be written to the database.
+* **Data Ingestion Pipeline**: A Node.js pipeline that pulls 800+ raw exercises from the [yuhonas/free-exercise-db](https://github.com/yuhonas/free-exercise-db) dataset. It normalizes the JSON data, seeds the relational equipment classifications into NeonDB, and prepares the assets for cloud storage and vectorization.
+* **Google Cloud Storage (GCS) & Image Compression**: During ingestion, exercise image assets are processed using the Node.js `sharp` library to achieve a 40% reduction in file size. These optimized assets are uploaded to GCS, and their resulting public URLs are seeded directly into NeonDB. This allows the frontend to rapidly fetch the optimized images without straining the main application servers.
+* **Pinecone Vector DB & Strict RAG Enforcement**: Handles semantic search. To guarantee accuracy, the LangGraph retrieval node performs a secondary strict-equality JavaScript filter over the vector search results to ensure the returned exercise metadata perfectly matches the user's available equipment. The LLM is strictly restricted to this RAG pool. If Gemini hallucinates an exercise from its internal training knowledge, the deterministic `safetyEvaluator` node detects the RAG violation and forces a LangGraph regeneration loop, completely blocking non-RAG data from reaching the database.
+* **NeonDB & Prisma**: The serverless PostgreSQL database stores the core application data: user authentication metadata, Stripe subscription statuses, selected gym equipment profiles, and historical workout tracking. The API route queries these tables pre-graph to inject past workout sessions into the context, and writes back the final validated `WorkoutPlan` post-graph.
+* **Programmatic Safety Evaluator**: A deterministic TypeScript validation node (`safetyEvaluator`) that acts as a strict firewall. It catches LLM hallucinations (e.g., assigning squats when the user has bad knees) and forces a loop back to the architect, blocking dangerous workouts before they ever reach the database.
+* **Serverless Compute (Google Cloud Run)**: Deployed the Next.js application to Cloud Run to achieve zero-downtime auto-scaling. This ensures the app seamlessly handles massive traffic spikes during complex workout generations without paying for idle servers.
+* **Asset Delivery (Google Cloud Storage)**: Used GCS to store the compressed exercise image assets. This drastically reduces bandwidth load on the main application servers by offloading static file delivery to a high-speed global network.
+* **Zero-Trust Security (GCP Secret Manager)**: Protected sensitive LLM API keys and database credentials by isolating them in Secret Manager, ensuring zero secrets are ever exposed in the source code or local environment files.
+* **Infrastructure as Code (Terraform)**: Eliminated manual server configuration by defining the entire cloud architecture in Terraform, ensuring the infrastructure is instantly reproducible and version-controlled.
+* **Deployment Automation (Cloud Build)**: Engineered an automated pipeline that builds the Docker containers, securely injects runtime secrets, and deploys new images directly to Cloud Run without human intervention.
+* **Clerk & Stripe**: Clerk provides robust, secure JWT-based user authentication, while Stripe manages subscription tiers and billing infrastructure directly through Next.js API webhooks.
+
+## 3. Installation & Setup
+
+### Environment Variables & Secret Manager
+Because this application is deployed securely to Cloud Run, all sensitive credentials must be packed into a single JSON object and stored in Google Cloud Secret Manager under the secret name `fitspark-runtime-config`. 
+
+This JSON object must contain the following keys:
+```json
+{
+  "DATABASE_URL": "postgresql://...",
+  "GEMINI_API_KEY": "...",
+  "GEMINI_MODEL": "gemini-3.6-flash",
+  "CLERK_SECRET_KEY": "sk_...",
+  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_...",
+  "CLERK_ENCRYPTION_KEY": "...",
+  "STRIPE_SECRET_KEY": "sk_...",
+  "STRIPE_WEBHOOK_SECRET": "whsec_...",
+  "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_...",
+  "STRIPE_PRICE_WEEKLY": "...",
+  "STRIPE_PRICE_MONTHLY": "...",
+  "STRIPE_PRICE_YEARLY": "...",
+  "NEXT_PUBLIC_BASE_URL": "...",
+  "PINECONE_API_KEY": "...",
+  "PINECONE_INDEX_NAME": "...",
+  "PINECONE_INDEX_HOST": "https://...",
+  "PINECONE_NAMESPACE": "...",
+  "RAG_IMAGE_BUCKET": "..."
+}
+```
+For local development, you can assign this entire minified JSON string to the `FITSPARK_RUNTIME_CONFIG_JSON` variable in your `.env.local` file.
+
+### Infrastructure Deployment (Terraform & GCP)
+The backend infrastructure is defined using Terraform. Before deploying, bootstrap your Google Cloud project and ensure your Artifact Registry is provisioned so Cloud Build can securely access your containers.
+
+1. **Configure Artifact Registry**:
 ```bash
-git clone https://github.com/anexinwilson/fit-spark.git
-cd fit-spark
-npm install       
+gcloud artifacts repositories create fit-spark \
+  --repository-format=docker \
+  --location=us-central1
 ```
 
-### 2. Environment Variables
-
-Create a `.env` file in the root directory and add your database URL:
-
-```ini
-DATABASE_URL=postgres://<user>:<password>@<your-neon>.neon.tech/neondb
+2. **Deploy Compute Workloads**:
+The repository includes deployment scripts that package the source and submit to Cloud Build.
+```powershell
+.\infra\app\deploy.ps1
+.\infra\ingestion\deploy.ps1
 ```
 
-Create a `.env.local` file in the root directory for all other environment variables:
+3. **Secret Management**:
+Ensure the `fitspark-runtime-config` secret exists in GCP Secret Manager. Cloud Build automatically injects this during the Docker build process.
 
-```ini
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
-CLERK_SECRET_KEY=...
-STRIPE_SECRET_KEY=...
-STRIPE_WEBHOOK_SECRET=...
-STRIPE_PRICE_WEEKLY=...
-STRIPE_PRICE_MONTHLY=...
-STRIPE_PRICE_YEARLY=...
-OPENAI_API_KEY=...
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-```
+### Local Development Setup
+After infrastructure is deployed (or for local testing), generate your environment variables and initialize the server.
 
-**Note:** The `.env` and `.env.local` files are only for local development. For GCP deployment, all environment variables are configured as GitHub Secrets (see deployment section below).
+1. **Configure Environment Variables**:
+Copy `.env.local.example` to `.env.local` and populate the required API keys (Gemini, Pinecone, NeonDB, Clerk).
 
-### 3. Database Migration (Neon + Prisma)
-
+2. **Initialize Database**:
 ```bash
-npx prisma generate
-npx prisma migrate deploy
+npm install
+npm run prisma:generate
+npx prisma db push
 ```
 
-### 4. Stripe CLI for Local Webhooks
-
-To test Stripe webhooks locally, set up the Stripe CLI:
-
-```bash
-stripe login
-stripe listen --forward-to localhost:3000/api/webhook
-```
-
-The CLI will output your webhook signing secret. Copy it and update `STRIPE_WEBHOOK_SECRET` in `.env.local`.
-
-### 5. Run Dev Server
-
+3. **Start the Development Server**:
 ```bash
 npm run dev
 ```
+Once started, navigate to `http://localhost:3000` to interact with the FitSpark UI.
 
-App opens on `http://localhost:3000`.
+## 4. Testing & Quality Assurance
 
-### Unit Tests
+> [!TIP]
+> **Stripe Billing is currently configured in Test Mode.** 
+> To test the subscription and checkout flows locally, use the standard Stripe test debit card:
+> - **Card Number**: `4242 4242 4242 4242`
+> - **Expiration**: Any future date (e.g., `12/30`)
+> - **CVC**: Any 3 digits (e.g., `123`)
 
+FitSpark maintains high reliability through a multi-layered testing strategy that covers UI interactions, component logic, and LLM output consistency.
+
+### 4. Running the Complete Test Suite
+
+A single unified script executes the entire testing suite locally before deployment:
 ```bash
-npm run test
+npm run test:all
 ```
-
-### Build
-
-```bash
-npm run build
-npm start
-```
-
----
-
-## Testing Stripe Payments (Test Mode)
-
-This app uses Stripe in **test mode**. Use these test card details for payment testing:
-
-### Test Card Numbers
-
-| Card Number | Brand | Use Case |
-|------------|-------|----------|
-| `4242 4242 4242 4242` | Visa | Successful payment |
-| `4000 0025 0000 3155` | Visa | Requires authentication (3D Secure) |
-| `4000 0000 0000 9995` | Visa | Declined payment |
-
-### Test Payment Details
-
-When prompted for billing details during Stripe Checkout:
-
-- **Card Number**: `4242 4242 4242 4242`
-- **Expiry Date**: Any future date (e.g., `12/34`)
-- **CVC**: Any 3 digits (e.g., `123`)
-- **Cardholder Name**: Any name (e.g., `John Doe`)
-- **Country**: Select **United States** or **Cayman Islands** (no ZIP/postal code required for Cayman Islands)
-- **ZIP/Postal Code**: 
-  - For US: Any 5 digits (e.g., `12345` or `90210`)
-  - For Cayman Islands: Leave blank or use `KY1-1234`
-
-**Quick Test Example (US):**
-- Card: `4242 4242 4242 4242`
-- Expiry: `12/34`
-- CVC: `123`
-- Country: United States
-- ZIP: `12345`
-
-**Quick Test Example (No ZIP required):**
-- Card: `4242 4242 4242 4242`
-- Expiry: `12/34`
-- CVC: `123`
-- Country: Cayman Islands
-- Address: Any text
-
-For more test cards and scenarios, visit [Stripe Testing Documentation](https://stripe.com/docs/testing).
-
----
-
-## Deployment to Google Cloud Platform
-
-This section explains how to deploy Fit Spark to **Google Cloud Run** using **GitHub Actions** for automated CI/CD.
-
-### Prerequisites
-
-- A Google Cloud Platform account ([Create one here](https://cloud.google.com/))
-- A GitHub repository for your Fit Spark project
-- Basic familiarity with GCP Console
-
-### Architecture Overview
-
-The deployment uses:
-- **Artifact Registry**: Stores Docker images
-- **Cloud Run**: Hosts the containerized Next.js app
-- **GitHub Actions**: Automates build and deployment on every push to `main`
-- **GitHub Secrets**: Stores all environment variables and GCP credentials
-
----
-
-## Google Cloud Platform Setup
-
-### Step 1: Enable Required APIs
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Make sure you have a project selected (or create a new one)
-3. In the top search bar, search for and enable these APIs one by one:
-
-#### a) Enable Artifact Registry API
-   - Search: "Artifact Registry API"
-   - Click on "Artifact Registry API"
-   - Click the blue **Enable** button
-   - Wait until "API Enabled" appears
-
-#### b) Enable Cloud Run API
-   - Search: "Cloud Run API"
-   - Click on "Cloud Run API"
-   - Click the blue **Enable** button
-   - Wait until "API Enabled" appears
-
----
-
-### Step 2: Create an Artifact Registry Repository
-
-1. In the GCP Console search bar, type **"Artifact Registry"** and open it
-2. Click **"Create Repository"** (blue button at the top)
-3. Fill in the form:
-   - **Name**: `fitspark-repo` (you can choose any name, but remember it)
-   - **Format**: Docker
-   - **Mode**: Standard
-   - **Location type**: Region
-   - **Region**: Choose one close to your users (e.g., `us-central1`, `asia-south1`, `europe-west1`)
-   - **Encryption**: Google-managed encryption key
-   - **Immutable image tags**: Leave unchecked/disabled
-4. Click **Create**
-5. Wait for the repository to be created
-
-**Note down:**
-- Repository name (e.g., `fitspark-repo`)
-- Region (e.g., `us-central1`)
-
----
-
-### Step 3: Find Your GCP Project ID
-
-1. At the very top of the Google Cloud Console, you'll see your project name
-2. Click on the **project dropdown** (next to "Google Cloud")
-3. In the popup, you'll see a table with columns: "Name", "ID", "Number"
-4. Copy the value from the **"ID"** column (e.g., `fit-spark-401204`)
-
-**Note down:** Your Project ID
-
----
-
-### Step 4: Construct Your Docker Image Base URL
-
-Your Docker image URL follows this exact format:
-
-```
-[REGION]-docker.pkg.dev/[PROJECT_ID]/[REPOSITORY_NAME]/[IMAGE_NAME]
-```
-
-**How to find each component:**
-
-| Component | Where to Find It | Your Value |
-|-----------|------------------|------------|
-| **REGION** | From Step 2 - the region you selected when creating the Artifact Registry repository | e.g., `us-central1` |
-| **PROJECT_ID** | From Step 3 - the ID column in the project dropdown | e.g., `fit-spark-401204` |
-| **REPOSITORY_NAME** | From Step 2 - the name you gave your repository | e.g., `fitspark-repo` |
-| **IMAGE_NAME** | Your app name (lowercase letters and hyphens only) | e.g., `fit-spark` |
-
-**Example Construction:**
-- Region: `us-central1`
-- Project ID: `fit-spark-401204`
-- Repository Name: `fitspark-repo`
-- Image Name: `fit-spark`
-
-**Final URL:**
-```
-us-central1-docker.pkg.dev/fit-spark-401204/fitspark-repo/fit-spark
-```
-
-**Note down:** Your complete Docker image base URL (you'll use this as `GCP_IMAGE_BASE_URL`)
-
----
-
-### Step 5: Create a Service Account for GitHub Actions
-
-1. In the GCP Console search bar, type **"Service Accounts"** and open **"IAM & Admin → Service Accounts"**
-2. Click **"Create Service Account"** (blue button at the top)
-3. Fill in:
-   - **Service account name**: `github-actions-deployer`
-   - **Service account ID**: (auto-filled)
-   - **Description**: `Service account for GitHub Actions to deploy Fit Spark`
-4. Click **"Create and Continue"**
-5. On the "Grant this service account access to project" page, click **"Select a role"** and add these roles one by one (click **"Add Another Role"** after each):
-   - `Cloud Run Admin`
-   - `Service Account User`
-   - `Artifact Registry Writer`
-6. Click **"Continue"** → **"Done"**
-
----
-
-### Step 6: Generate JSON Key for Service Account
-
-1. In the **Service Accounts** list, find and click on **`github-actions-deployer`**
-2. Click on the **"Keys"** tab at the top
-3. Click **"Add Key"** → **"Create new key"**
-4. Select **JSON** format
-5. Click **"Create"**
-6. A `.json` file will automatically download to your computer
-7. Open this file with any text editor (Notepad, VS Code, etc.)
-8. **Copy the entire contents** of the file (from the opening `{` to the closing `}`)
-
-**Note down:** Keep this JSON content safe - you'll paste it into GitHub Secrets
-
----
-
-## GitHub Repository Setup
-
-### Step 7: Add GitHub Secrets
-
-Now you'll configure GitHub Secrets that the deployment workflow will use.
-
-1. Go to your GitHub repository on GitHub.com
-2. Click **"Settings"** (top right)
-3. In the left sidebar, click **"Secrets and variables"** → **"Actions"**
-4. Click **"New repository secret"** (green button)
-5. Add each secret below **one by one**:
-
----
-
-#### Secret 1: `GCLOUD_SERVICE_KEY`
-
-- **Name**: `GCLOUD_SERVICE_KEY`
-- **Value**: Paste the entire JSON content from Step 6 (the downloaded service account key file)
-- Click **"Add secret"**
-
----
-
-#### Secret 2: `GCP_PROJECT_ID`
-
-- **Name**: `GCP_PROJECT_ID`
-- **Value**: Your Project ID from Step 3
-- **Where to find**: Google Cloud Console → Top bar → Project dropdown → Copy the "ID" column value
-- Click **"Add secret"**
-
----
-
-#### Secret 3: `GCP_REGION`
-
-- **Name**: `GCP_REGION`
-- **Value**: The region you selected in Step 2 when creating the Artifact Registry
-- **Where to find**: Google Cloud Console → Artifact Registry → Repositories → Look at the "Location" column
-- **Examples**: `us-central1`, `asia-south1`, `europe-west1`
-- Click **"Add secret"**
-
----
-
-#### Secret 4: `GCP_IMAGE_BASE_URL`
-
-- **Name**: `GCP_IMAGE_BASE_URL`
-- **Value**: The complete Docker image URL you constructed in Step 4
-- **Format**: `[REGION]-docker.pkg.dev/[PROJECT_ID]/[REPOSITORY_NAME]/[IMAGE_NAME]`
-- **Example**: `us-central1-docker.pkg.dev/fit-spark-401204/fitspark-repo/fit-spark`
-- Click **"Add secret"**
-
----
-
-#### Secret 5: `CLOUD_RUN_SERVICE_NAME`
-
-- **Name**: `CLOUD_RUN_SERVICE_NAME`
-- **Value**: Choose a name for your Cloud Run service (lowercase letters and hyphens only)
-- **Example**: `fit-spark` or `fitspark-app`
-- Click **"Add secret"**
-
----
-
-#### Secret 6-15: Application Environment Variables
-
-Add all your application secrets (same values you use in `.env.local` for local development):
-
-| Secret Name | Where to Find Value |
-|------------|---------------------|
-| `CLERK_SECRET_KEY` | Clerk Dashboard → Your app → API Keys → Secret keys |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk Dashboard → Your app → API Keys → Publishable keys |
-| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys → Secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe Dashboard → Developers → Webhooks → Add endpoint → Copy signing secret |
-| `STRIPE_PRICE_WEEKLY` | Stripe Dashboard → Products → Your weekly plan → Copy Price ID |
-| `STRIPE_PRICE_MONTHLY` | Stripe Dashboard → Products → Your monthly plan → Copy Price ID |
-| `STRIPE_PRICE_YEARLY` | Stripe Dashboard → Products → Your yearly plan → Copy Price ID |
-| `OPENAI_API_KEY` | OpenAI Platform → API keys → Create new secret key |
-| `DATABASE_URL` | Neon Dashboard → Your project → Connection string |
-| `NEXT_PUBLIC_BASE_URL` | Use `http://localhost:3000` for local dev, or your production domain |
-
----
-
-### Step 8: Verify Your GitHub Workflow File
-
-Make sure your repository has a `.github/workflows/deploy.yml` file. This file should already exist in the repository and will:
-1. Trigger on every push to the `main` branch
-2. Build a Docker image of your app
-3. Push the image to Google Artifact Registry
-4. Deploy the image to Cloud Run
-5. Configure all environment variables from GitHub Secrets
-
-**You don't need to modify this file** - it's already configured to use the secrets you just added.
-
----
-
-## Deploying Your App
-
-### First Deployment
-
-1. Make sure all GitHub Secrets from Step 7 are added
-2. Push your code to the `main` branch:
-   ```bash
-   git add .
-   git commit -m "Deploy to GCP Cloud Run"
-   git push origin main
-   ```
-3. GitHub Actions will automatically start the deployment
-4. Monitor the deployment:
-   - Go to your GitHub repository
-   - Click the **"Actions"** tab
-   - Click on the latest workflow run
-   - Watch the deployment logs in real-time
-
-### After First Deployment
-
-1. Once deployment succeeds, go to [Google Cloud Console → Cloud Run](https://console.cloud.google.com/run)
-2. Click on your service (the name you used in `CLOUD_RUN_SERVICE_NAME`)
-3. Your app is now live at the **URL** shown at the top (e.g., `https://fit-spark-abc123-uc.a.run.app`)
-4. Visit the URL to access your deployed application
-
-### Subsequent Deployments
-
-Every time you push to the `main` branch, GitHub Actions will automatically:
-- Build your updated code
-- Create a new Docker image
-- Deploy to Cloud Run
-- Your app will update with zero downtime
-
----
-
-## Monitoring and Troubleshooting
-
-### View Deployment Logs
-- **GitHub Actions**: Your repository → Actions tab → Click on workflow run
-- **Cloud Run Logs**: GCP Console → Cloud Run → Your service → Logs tab
-
-### Common Issues
-
-**Issue**: Deployment fails with "Permission denied"
-- **Solution**: Verify the service account has all required roles (Step 5)
-
-**Issue**: "Repository not found" error
-- **Solution**: Check that `GCP_IMAGE_BASE_URL` exactly matches the format from Step 4
-
-**Issue**: Cloud Run service shows errors
-- **Solution**: Check Cloud Run logs for missing environment variables or configuration issues
-
-**Issue**: Webhooks not working on GCP
-- **Solution**: Update Stripe webhook endpoint URL to your Cloud Run URL + `/api/webhook`
-
----
-
-## Summary of What You've Done
-
-✅ Enabled Artifact Registry and Cloud Run APIs on GCP  
-✅ Created an Artifact Registry repository to store Docker images  
-✅ Created a service account with deployment permissions  
-✅ Generated a JSON key for GitHub Actions authentication  
-✅ Added 15+ GitHub Secrets for deployment and app configuration  
-✅ Set up automated CI/CD: every push to `main` → builds → deploys to Cloud Run  
-
-**Your app is now running on Google Cloud with automatic deployments!**
-
-For questions or issues, check:
-- [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Stripe Testing Guide](https://stripe.com/docs/testing)
-
----
-
-## License
-
-[Your License Here]
+This single command sequentially triggers:
+1. **Unit Testing (Jest)**: Executes `npm run test` to validate core utility functions, React components, and deterministic LangGraph node logic (e.g., `equipmentResolver`).
+2. **End-to-End Testing (Playwright)**: Executes `npm run test:e2e` to spin up a headless browser and simulate actual user flows—from logging in via Clerk to selecting equipment and generating a workout. You can also run this interactively with the Playwright UI using `npm run test:e2e:ui`.
+3. **LLM Evaluation (LangSmith)**: Executes `npm run eval` to run programmatic evaluations on the Gemini LLM outputs, ensuring the generated workout routines consistently meet safety and formatting constraints over time.
+
+## 5. Key Technical Achievements
+* **Stateful Workout Memory**: Engineered a historical context pipeline that analyzes a user's previously completed exercises and session logs to dynamically adjust progressive overload and prevent repetitive routines.
+* **Dynamic Equipment Resolution**: Integrated semantic RAG via Pinecone to filter over 800 exercises in real-time, ensuring generated workouts strictly match the user's specifically selected home or gym equipment without relying on unreliable LLM guesswork.
+* **Interactive Session Tracking**: Built an in-app tracking system allowing users to mark sets as done and log performance, which feeds directly back into the NeonDB state to create a continuous feedback loop for future LLM generations.
+* **Parallel Workout Generation**: Implemented a LangGraph Map-Reduce fan-out pipeline that dynamically spawns concurrent worker nodes based on user input, drastically reducing the latency of multi-day workout generation.
+* **Programmatic Safety Firewalls**: Developed a strict TypeScript validation node (`safetyEvaluator`) that programmatically intercepts and forces retries on unsafe LLM outputs before they can be persisted to the database.
+* **End-to-End Type Safety**: Leveraged Zod to force the LLM's unstructured text generation into a deterministic JSON schema, completely eliminating runtime parsing errors.
+* **High-Availability LLM Cascade**: Built a custom fallback routing mechanism through Google AI Studio that automatically shifts traffic from Gemini 3.6 Flash to 3.5 and 3.0 during rate limits, ensuring zero downtime.
+* **Optimized Data Ingestion**: Engineered a custom one-click Node.js pipeline that simultaneously synchronizes relational data into PostgreSQL, vectorizes embeddings into Pinecone, and achieves a 40% file size reduction on exercise images via `sharp` before serving them securely through Google Cloud Storage.
+* **Automated GCP Builds**: Configured Terraform for Google Cloud Platform (GCP) resources, using Cloud Build to automate containerized deployments to Cloud Run.
+* **Continuous AI Evaluation (LangSmith)**: Engineered a suite of LangSmith evaluations to programmatically score the RAG pipeline. By using a strict regex evaluator for Pinecone equipment compliance and LLM-as-a-judge evaluators for hallucinations and persona checks, this continuous testing loop directly exposed prompt weaknesses, allowing the agents to be iteratively refined to become highly accurate and significantly more efficient in token consumption.
+* **Deterministic E2E Testing (Playwright)**: Engineered a comprehensive headless Playwright testing suite that automatically simulates complex, real-world user flows (e.g., Stripe checkouts, Auth, equipment selection) to guarantee UI reliability before any Cloud Run deployment.

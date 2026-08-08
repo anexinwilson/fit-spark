@@ -6,6 +6,7 @@ const createJestConfig = nextJest({
 });
 
 const config: Config = {
+  rootDir: "../",
   coverageProvider: "v8",
   testEnvironment: "jsdom",
   testMatch: ["<rootDir>/__tests__/**/*.test.{ts,tsx}"],
@@ -16,7 +17,7 @@ const config: Config = {
     "^@clerk/nextjs/server$": "<rootDir>/__tests__/__mocks__/clerk-nextjs-server.ts"
   },
   modulePathIgnorePatterns: ["<rootDir>/.next/"],
-  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
+  setupFilesAfterEnv: ["<rootDir>/__tests__/jest.setup.ts"],
   transformIgnorePatterns: ["/node_modules/(?!(@langchain|langchain|@clerk)/)"],
 };
 

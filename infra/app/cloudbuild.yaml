@@ -9,6 +9,7 @@ steps:
           --cache-from ${_IMAGE_URI} \
           --build-arg FITSPARK_RUNTIME_CONFIG_JSON="$$FITSPARK_RUNTIME_CONFIG_JSON" \
           --tag ${_IMAGE_URI} \
+          -f infra/app/Dockerfile \
           .
     secretEnv: ['FITSPARK_RUNTIME_CONFIG_JSON']
 
