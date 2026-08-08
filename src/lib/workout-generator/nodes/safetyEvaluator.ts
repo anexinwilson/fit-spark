@@ -113,6 +113,6 @@ export async function safetyEvaluator(
     return { safetyIssues: [] };
   }
 
-  console.log(`   [safetyEvaluator] ⚠️ ${issues.length} issue(s) found`);
+  console.log(`   [safetyEvaluator] ⚠️ ${issues.length} issue(s) found:`, issues);
   return { safetyIssues: issues, retryCount: (state.retryCount || 0) + 1 };
 }

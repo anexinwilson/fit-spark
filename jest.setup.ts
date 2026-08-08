@@ -58,3 +58,7 @@ if (!("json" in Response)) {
 }
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+jest.mock('@/lib/auth', () => ({ 
+  getAuthenticatedUser: jest.fn().mockResolvedValue('test_user_id'),
+  getAuthenticatedUserId: jest.fn().mockResolvedValue('test_user_id')
+}));

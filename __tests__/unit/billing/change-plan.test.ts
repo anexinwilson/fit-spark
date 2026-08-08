@@ -1,5 +1,5 @@
 import { POST } from "@/app/api/profile/change-plan/route";
-import { createRequest, readResponse } from "./test-utils";
+import { createRequest, readResponse } from "../test-utils";
 
 jest.mock("@/lib/auth", () => ({
   getAuthenticatedUserId: jest.fn(),

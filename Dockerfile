@@ -14,10 +14,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Prisma only validates the URL and generates code during this stage; it does
-# not connect to this placeholder database.
+# Real config is injected by Cloud Build from Secret Manager at build time.
+ARG FITSPARK_RUNTIME_CONFIG_JSON
+ENV FITSPARK_RUNTIME_CONFIG_JSON=$FITSPARK_RUNTIME_CONFIG_JSON
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/fit_spark"
-ENV FITSPARK_RUNTIME_CONFIG_JSON="{\"CLERK_SECRET_KEY\":\"mock\",\"CLERK_ENCRYPTION_KEY\":\"mock\",\"NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY\":\"pk_test_bWFnbmV0aWMtbGl6YXJkLTk3LmNsZXJrLmFjY291bnRzLmRldiQ\",\"DATABASE_URL\":\"postgresql://build:build@localhost:5432/fit_spark\",\"GEMINI_API_KEY\":\"mock\",\"GEMINI_MODEL\":\"mock\",\"STRIPE_SECRET_KEY\":\"mock\",\"STRIPE_WEBHOOK_SECRET\":\"mock\",\"NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY\":\"pk_test_51RjFXo2emdHTaRR3MS1Rog3m0TFGjWiMxiWNSzLUnVWpr0SjR7Zf9SqMNwS4bWupi9tox2r9b4avm6cuIHA7uY2u0096I17pAC\",\"STRIPE_PRICE_WEEKLY\":\"mock\",\"STRIPE_PRICE_MONTHLY\":\"mock\",\"STRIPE_PRICE_YEARLY\":\"mock\",\"NEXT_PUBLIC_BASE_URL\":\"http://localhost:3000\",\"PINECONE_API_KEY\":\"mock\",\"PINECONE_INDEX_NAME\":\"mock\",\"PINECONE_INDEX_HOST\":\"https://mock.pinecone.io\",\"PINECONE_NAMESPACE\":\"mock\",\"RAG_IMAGE_BUCKET\":\"mock\"}"
 RUN npx prisma generate
 
 # Build optimized Next.js production output

@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom";
 import * as React from "react";
 
-jest.mock("@/features/equipment/actions", () => ({
+jest.mock("@/actions/equipment", () => ({
   __esModule: true,
   getUserEquipment: () => Promise.resolve([]),
   toggleEquipment: () => Promise.resolve({ owned: true }),

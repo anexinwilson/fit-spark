@@ -13,10 +13,11 @@ const config: Config = {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@langchain/langgraph$":
       "<rootDir>/node_modules/@langchain/langgraph/dist/index.cjs",
+    "^@clerk/nextjs/server$": "<rootDir>/__tests__/__mocks__/clerk-nextjs-server.ts"
   },
   modulePathIgnorePatterns: ["<rootDir>/.next/"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
-  transformIgnorePatterns: ["/node_modules/(?!(@langchain|langchain)/)"],
+  transformIgnorePatterns: ["/node_modules/(?!(@langchain|langchain|@clerk)/)"],
 };
 
 export default createJestConfig(config);

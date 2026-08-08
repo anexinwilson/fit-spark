@@ -1,6 +1,6 @@
-import { workoutPlanWorkflow } from "../src/lib/workout-generator/graph";
+import { workoutPlanWorkflow } from "@/lib/workout-generator/graph";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { createRequest, readResponse } from "./test-utils";
+import { createRequest, readResponse } from "../test-utils";
 
 // Mock Pinecone API fetch to return a mix of machine, dumbbell, and bodyweight exercises
 const mockPineconeHits = [
@@ -110,31 +110,35 @@ describe("Equipment Enforcement & Programmatic Evals", () => {
   describe("LangGraph Equipment Enforcement", () => {
     it("strictly filters RAG database to non-bodyweight exercises when only 'Machine' is requested", async () => {
       const validMachinePlanJson = JSON.stringify({
-        Monday: {
-          warmup: [],
-          mainWorkout: [
-            {
-              name: "Leg Press",
-              equipment: "Machine",
-              setsAndReps: "3x10",
-              notes: "Focus on machine leg press",
-            },
-            {
-              name: "Chest Press Machine",
-              equipment: "Machine",
-              setsAndReps: "3x12",
-              notes: "Maintain tension",
-            },
-          ],
-          cooldown: [],
-          cardio: [],
-        },
+        warmup: [],
+        mainWorkout: [
+          {
+            name: "Leg Press",
+            equipment: "Machine",
+            setsAndReps: "3x10",
+            notes: "Focus on machine leg press",
+          },
+          {
+            name: "Chest Press Machine",
+            equipment: "Machine",
+            setsAndReps: "3x12",
+            notes: "Maintain tension",
+          },
+        ],
+        cooldown: [],
+        cardio: [],
       });
 
-      ChatGoogleGenerativeAI.prototype.invoke = async function () {
+      ChatGoogleGenerativeAI.prototype.invoke = async function (input: any) {
+        const promptStr = typeof input === "string" ? input : JSON.stringify(input);
+        if (promptStr.includes("designing a weekly training split")) {
+          return Promise.resolve({
+            content: JSON.stringify({ Monday: ["Leg Press", "Chest Press Machine"] })
+          } as any);
+        }
         return Promise.resolve({
           content: validMachinePlanJson,
-        } as unknown as Awaited<ReturnType<typeof originalInvoke>>);
+        } as any);
       };
 
       const result = await workoutPlanWorkflow.invoke({
@@ -176,21 +180,25 @@ describe("Equipment Enforcement & Programmatic Evals", () => {
 
     it("detects equipment constraint violation in safetyEvaluator if LLM includes bodyweight in mainWorkout", async () => {
       const invalidBodyweightInMainPlanJson = JSON.stringify({
-        Monday: {
-          mainWorkout: [
-            {
-              name: "Pushups",
-              equipment: "Bodyweight",
-              setsAndReps: "3x15",
-            },
-          ],
-        },
+        mainWorkout: [
+          {
+            name: "Pushups",
+            equipment: "Bodyweight",
+            setsAndReps: "3x15",
+          },
+        ],
       });
 
-      ChatGoogleGenerativeAI.prototype.invoke = async function () {
+      ChatGoogleGenerativeAI.prototype.invoke = async function (input: any) {
+        const promptStr = typeof input === "string" ? input : JSON.stringify(input);
+        if (promptStr.includes("designing a weekly training split")) {
+          return Promise.resolve({
+            content: JSON.stringify({ Monday: ["Pushups"] })
+          } as any);
+        }
         return Promise.resolve({
           content: invalidBodyweightInMainPlanJson,
-        } as unknown as Awaited<ReturnType<typeof originalInvoke>>);
+        } as any);
       };
 
       const result = await workoutPlanWorkflow.invoke({
@@ -205,7 +213,7 @@ describe("Equipment Enforcement & Programmatic Evals", () => {
       expect(result.safetyIssues).toBeDefined();
       expect(
         result.safetyIssues.some((issue: string) =>
-          issue.includes("Violates Equipment Constraints"),
+          issue.includes("Equipment violation"),
         ),
       ).toBe(true);
     });

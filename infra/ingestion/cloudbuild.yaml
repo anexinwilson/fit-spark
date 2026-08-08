@@ -4,7 +4,7 @@ steps:
     args:
       - build
       - --file
-      - Dockerfile.rag
+      - infra/ingestion/Dockerfile
       - --tag
       - us-central1-docker.pkg.dev/$PROJECT_ID/fit-spark/fit-spark-rag-indexer:latest
       - .

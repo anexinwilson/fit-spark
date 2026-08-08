@@ -1,5 +1,5 @@
 import { POST } from "@/app/api/create-profile/route";
-import { readResponse } from "./test-utils";
+import { readResponse } from "../test-utils";
 
 jest.mock("@/lib/auth", () => ({ getAuthenticatedUser: jest.fn() }));
 jest.mock("@/lib/prisma", () => ({

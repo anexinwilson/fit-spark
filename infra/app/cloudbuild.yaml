@@ -1,13 +1,16 @@
 steps:
   - id: Build production container
     name: gcr.io/cloud-builders/docker
+    entrypoint: bash
     args:
-      - build
-      - --cache-from
-      - ${_IMAGE_URI}
-      - --tag
-      - ${_IMAGE_URI}
-      - .
+      - -c
+      - |
+        docker build \
+          --cache-from ${_IMAGE_URI} \
+          --build-arg FITSPARK_RUNTIME_CONFIG_JSON="$$FITSPARK_RUNTIME_CONFIG_JSON" \
+          --tag ${_IMAGE_URI} \
+          .
+    secretEnv: ['FITSPARK_RUNTIME_CONFIG_JSON']
 
   - id: Push production container
     name: gcr.io/cloud-builders/docker
@@ -26,6 +29,11 @@ steps:
       - --region=us-central1
       - --project=${PROJECT_ID}
       - --quiet
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/${PROJECT_ID}/secrets/fitspark-runtime-config/versions/latest
+      env: 'FITSPARK_RUNTIME_CONFIG_JSON'
 
 images:
   - ${_IMAGE_URI}

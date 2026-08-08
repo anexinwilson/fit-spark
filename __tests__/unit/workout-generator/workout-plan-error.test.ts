@@ -1,6 +1,17 @@
 import { RateLimitQuotaExhaustedError } from "@/lib/errors";
 import { POST } from "@/app/api/generate-plan/route";
-import { createRequest } from "./test-utils";
+import { createRequest } from "../test-utils";
+
+jest.mock("@/lib/prisma", () => ({
+  __esModule: true,
+  prisma: {
+    workoutSession: {
+      create: jest.fn().mockResolvedValue({ id: "mock-session-id" }),
+      update: jest.fn().mockResolvedValue({ id: "mock-session-id" }),
+      findMany: jest.fn().mockResolvedValue([{ id: "mock-session-id", exercises: [] }]),
+    },
+  },
+}));
 
 jest.mock("@/lib/workout-generator/graph", () => ({
   workoutPlanWorkflow: {

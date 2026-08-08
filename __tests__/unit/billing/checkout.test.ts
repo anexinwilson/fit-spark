@@ -12,7 +12,7 @@ jest.mock("@/lib/auth", () => ({
   }),
 }));
 
-import { createRequest, readResponse } from "./test-utils";
+import { createRequest, readResponse } from "../test-utils";
 
 describe("checkout", () => {
   it("returns 400 for an unsupported plan", async () => {

@@ -1,5 +1,5 @@
 import { GET } from "@/app/api/check-subscription/route";
-import { readResponse } from "./test-utils";
+import { readResponse } from "../test-utils";
 
 jest.mock("@/lib/prisma", () => ({
   prisma: { profile: { findUnique: jest.fn() } },
